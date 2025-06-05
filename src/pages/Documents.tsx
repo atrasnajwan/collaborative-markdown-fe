@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, Document } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Documents: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -10,6 +11,7 @@ const Documents: React.FC = () => {
   const [newDocumentTitle, setNewDocumentTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const { logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchDocuments();
@@ -93,7 +95,8 @@ const Documents: React.FC = () => {
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="bg-card-bg p-6 rounded-lg shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-200"
+                className="bg-card-bg p-6 rounded-lg shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-200 cursor-pointer"
+                onClick={() => navigate(`/documents/${doc.id}/edit`)}
               >
                 <h2 className="text-xl font-semibold text-text-primary mb-2">{doc.title}</h2>
                 <p className="text-text-secondary mb-4 line-clamp-2">{doc.content}</p>

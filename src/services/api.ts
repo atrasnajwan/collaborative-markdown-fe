@@ -134,6 +134,10 @@ class ApiService {
       body: JSON.stringify({ title }),
     });
   }
+
+  async getDocument(id: string | number): Promise<Document> {
+    return this.request<Document>(`/documents/${id}`);
+  }
 }
 
 export const api = new ApiService(); 

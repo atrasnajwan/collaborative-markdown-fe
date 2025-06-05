@@ -4,6 +4,7 @@ import Auth from './pages/Auth';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Documents from './pages/Documents';
+import EditDocument from './pages/EditDocument';
 import './index.css';
 
 function App() {
@@ -18,6 +19,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Documents />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/documents/:id/edit" 
+            element={
+              <ProtectedRoute>
+                <EditDocument />
               </ProtectedRoute>
             } 
           />
