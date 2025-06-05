@@ -56,9 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (name: string, email: string, password: string) => {
     try {
-      const response = await api.register(name, email, password);
-      setUser(response.user);
-      navigate('/documents');
+      await api.register(name, email, password);
     } catch (error) {
       throw error;
     }

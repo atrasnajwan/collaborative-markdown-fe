@@ -39,6 +39,7 @@ const Auth: React.FC = () => {
         await login(formData.email, formData.password);
       } else {
         await register(formData.name, formData.email, formData.password);
+        setIsLogin(true)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

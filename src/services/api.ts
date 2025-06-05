@@ -13,7 +13,7 @@ export interface LoginResponse {
 
 export interface Document {
   id: number;
-  name: string;
+  title: string;
   content: string;
   created_at: string;
   updated_at: string;
@@ -102,18 +102,18 @@ class ApiService {
 
   async getDocuments(params: GetDocumentsParams = {}): Promise<PaginatedResponse<Document>> {
     const queryParams = new URLSearchParams();
-    
+
     if (params.page) {
       queryParams.append('page', params.page.toString());
     }
-    
+
     if (params.per_page) {
       queryParams.append('per_page', params.per_page.toString());
     }
 
     const queryString = queryParams.toString();
     const endpoint = `/documents${queryString ? `?${queryString}` : ''}`;
-    
+
     return this.request<PaginatedResponse<Document>>(endpoint);
   }
 
@@ -126,6 +126,13 @@ class ApiService {
 
   async getCurrentUser(): Promise<User> {
     return this.request<User>('/profile');
+  }
+
+  async createDocument(title: string): Promise<Document> {
+    return this.request<Document>('/documents', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    });
   }
 }
 
