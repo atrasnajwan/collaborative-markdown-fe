@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { Box, Typography, AppBar, Toolbar } from '@mui/material';
@@ -12,11 +12,16 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeAddClasses from 'rehype-add-classes';
 import '../styles/markdown.css';
+import Editor from '@monaco-editor/react';
+import { CollaborationProvider } from '../services/CollaborationProvider';
+import { useAuth } from '../contexts/AuthContext';
 
 const EditDocument: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [markdown, setMarkdown] = useState<string>('');
     const [title, setTitle] = useState<string>('');
+    const collaborationRef = useRef<CollaborationProvider | null>(null);
+    const { user } = useAuth();
 
     useEffect(() => {
         const fetchDocument = async () => {
@@ -24,13 +29,34 @@ const EditDocument: React.FC = () => {
                 const document = await api.getDocument(id!);
                 setMarkdown(document.content);
                 setTitle(document.title);
+
+                // Initialize collaboration
+                if (id && user) {
+                    collaborationRef.current = new CollaborationProvider(id, user);
+                    // TODO: update content and cursor
             } catch (error) {
                 console.error('Failed to fetch document:', error);
             }
         };
 
-        if (id) fetchDocument();
+        if (id && user) {
+            fetchDocument();
+        }
+
+        return () => {
+            if (collaborationRef.current) {
+                collaborationRef.current.destroy();
+                collaborationRef.current = null
+            }
+        };
     }, [id]);
+
+    const handleEditorChange = (value: string | undefined) => {
+        if (value !== undefined) {
+            setMarkdown(value);
+            // TODO: update content ws
+        }
+    };
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#1e1e1e' }}>
@@ -46,12 +72,23 @@ const EditDocument: React.FC = () => {
             {/* Main Content */}
             <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
                 {/* Editor Section */}
-                <Box sx={{ flex: 1, height: '100%', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-                    <textarea
+                <Box sx={{ flex: 1, height: '100%', borderRight: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
+                    <Editor
+                        height="100%"
+                        defaultLanguage="markdown"
                         value={markdown}
-                        onChange={(e) => setMarkdown(e.target.value)}
-                        className="markdown-editor"
+                        onChange={handleEditorChange}
+                        theme="vs-dark"
+                        options={{
+                            minimap: { enabled: false },
+                            fontSize: 14,
+                            lineNumbers: 'on',
+                            wordWrap: 'on',
+                            wrappingIndent: 'same',
+                            automaticLayout: true,
+                        }}
                     />
+                    {/* TODO: remote cursor */}
                 </Box>
 
                 {/* Preview Section */}
@@ -95,4 +132,4 @@ const EditDocument: React.FC = () => {
     );
 };
 
-export default EditDocument; 
+export default EditDocument;

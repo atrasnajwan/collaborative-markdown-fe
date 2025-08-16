@@ -1,11 +1,13 @@
 interface Config {
     apiUrl: string
-    port: number
+    port: number,
+    websocketUrl: string
 }
 
 export const config: Config = {
     apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000',
     port: Number(import.meta.env.VITE_PORT) || 5173,
+    websocketUrl: import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8000',
 };
 
 // Validate required environment variables
