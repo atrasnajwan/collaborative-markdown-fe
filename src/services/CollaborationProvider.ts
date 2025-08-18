@@ -3,10 +3,9 @@ import { WebsocketProvider } from 'y-websocket';
 import { config } from '../config/env';
 
 export interface CursorPosition {
-  userId: string;
-  userName: string;
   line: number;
   column: number;
+  userName: string
 }
 
 interface User {
@@ -113,6 +112,20 @@ export class CollaborationProvider {
 
   public getContent(): string {
     return this.text.toString();
+  }
+
+  sendContentUpdate(content: string) {
+    this.doc.transact(() => {
+      this.text.delete(0, this.text.length);
+      this.text.insert(0, content);
+    });
+  }
+
+  sendCursorUpdate(cursor: CursorPosition) {
+    this.doc.transact(() => {
+      const awareness = this.provider.awareness;
+      awareness.setLocalStateField('cursor', cursor);
+    });
   }
 
   public destroy() {

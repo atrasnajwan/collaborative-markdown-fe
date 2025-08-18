@@ -33,7 +33,7 @@ const EditDocument: React.FC = () => {
                 // Initialize collaboration
                 if (id && user) {
                     collaborationRef.current = new CollaborationProvider(id, user);
-                    // TODO: update content and cursor
+                }
             } catch (error) {
                 console.error('Failed to fetch document:', error);
             }
@@ -51,11 +51,38 @@ const EditDocument: React.FC = () => {
         };
     }, [id]);
 
+    // handle received broadcast message
+    useEffect(() => {
+        if (collaborationRef.current) {
+            const yText = collaborationRef.current.getText();
+            const updateHandler = () => setMarkdown(yText.toString())
+            yText.observe(updateHandler);
+
+            return () => yText.unobserve(updateHandler);
+        }
+    }, [collaborationRef.current]);
+
     const handleEditorChange = (value: string | undefined) => {
         if (value !== undefined) {
             setMarkdown(value);
-            // TODO: update content ws
+            if (collaborationRef.current) {
+                collaborationRef.current.sendContentUpdate(value);
+            }
         }
+    };
+
+    // cursor update
+    const handleEditorDidMount = (editor: any) => {
+        editor.onDidChangeCursorPosition((e: any) => {
+            if (collaborationRef.current && user) {
+                const position = e.position;
+                collaborationRef.current.sendCursorUpdate({
+                    line: position.lineNumber,
+                    column: position.column,
+                    userName: user.name
+                });
+            }
+        });
     };
 
     return (
@@ -78,6 +105,7 @@ const EditDocument: React.FC = () => {
                         defaultLanguage="markdown"
                         value={markdown}
                         onChange={handleEditorChange}
+                        onMount={handleEditorDidMount}
                         theme="vs-dark"
                         options={{
                             minimap: { enabled: false },
@@ -88,7 +116,6 @@ const EditDocument: React.FC = () => {
                             automaticLayout: true,
                         }}
                     />
-                    {/* TODO: remote cursor */}
                 </Box>
 
                 {/* Preview Section */}
