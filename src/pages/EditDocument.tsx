@@ -19,8 +19,11 @@ import { useAuth } from '../contexts/AuthContext';
 const EditDocument: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [markdown, setMarkdown] = useState<string>('');
+    const [remoteCursors, setRemoteCursors] = useState<{ [userId: string]: { line: number; column: number; color: string; name: string } }>({});
     const [title, setTitle] = useState<string>('');
     const collaborationRef = useRef<CollaborationProvider | null>(null);
+    const editorRef = useRef<any>(null);
+    const [decorationIds, setDecorationIds] = useState<string[]>([]);
     const { user } = useAuth();
 
     useEffect(() => {
@@ -45,18 +48,42 @@ const EditDocument: React.FC = () => {
                 }
             };
         }
-    }, [id]);
+    }, [id, user]);
 
     // handle received broadcast message
     useEffect(() => {
-        if (collaborationRef.current) {
-            const yText = collaborationRef.current.getText();
-            const updateHandler = () => setMarkdown(yText.toString())
-            yText.observe(updateHandler);
+        if (!collaborationRef.current) return;
 
-            return () => yText.unobserve(updateHandler);
-        }
-    }, [collaborationRef.current]);
+        // Sync markdown content from Yjs
+        const yText = collaborationRef.current.getText();
+        const updateHandler = () => setMarkdown(yText.toString());
+        yText.observe(updateHandler);
+
+        // Sync remote cursors from awareness
+        const awareness = collaborationRef.current.getAwareness();
+        const onAwarenessChange = () => {
+            const states = awareness.getStates();
+            let cursors: typeof remoteCursors = {};
+
+            for (const [_, state] of states) {
+                if (user && state.cursor && state.user && state.user.id !== user.id) {
+                    cursors[state.user.id] = {
+                        line: state.cursor.line,
+                        column: state.cursor.column,
+                        color: state.user.color,
+                        name: state.user.name
+                    };
+                }
+            }
+            setRemoteCursors(cursors);
+        };
+        awareness.on('change', onAwarenessChange);
+        // Cleanup both observers
+        return () => {
+            yText.unobserve(updateHandler);
+            awareness.off('change', onAwarenessChange);
+        };
+    }, [collaborationRef.current, user]);
 
     const handleEditorChange = (value: string | undefined) => {
         if (value !== undefined) {
@@ -69,17 +96,58 @@ const EditDocument: React.FC = () => {
 
     // cursor update
     const handleEditorDidMount = (editor: any) => {
-        editor.onDidChangeCursorPosition((e: any) => {
+        editorRef.current = editor;
+        editor.onDidChangeCursorPosition((_e: any) => {
             if (collaborationRef.current && user) {
-                const position = e.position;
-                collaborationRef.current.sendCursorUpdate({
-                    line: position.lineNumber,
-                    column: position.column,
-                    userName: user.name
-                });
+                const model = editor.getModel();
+                const selection = editor.getSelection();
+                
+                if (model && selection) {
+                    const lineContent = model.getLineContent(selection.positionLineNumber);
+                    const lineLength = lineContent.length;
+                    
+                    // Check if cursor is at end of line
+                    const column = selection.positionColumn > lineLength ? 
+                        lineLength + 1 : selection.positionColumn;
+
+                    collaborationRef.current.sendCursorUpdate({
+                        line: selection.positionLineNumber,
+                        column: column,
+                        userName: user.name
+                    });
+                }
             }
         });
+        console.log('Awareness states:', collaborationRef.current?.getAwareness().getStates());
     };
+
+    useEffect(() => {
+        if (!editorRef.current || Object.keys(remoteCursors).length === 0) return;
+
+        if (editorRef.current.constructor && editorRef.current.constructor.name === "W") {
+            // Monaco is available as a property of the editor instance
+            const monacoInstance = editorRef.current._standaloneKeybindingService?._monaco || editorRef.current._monaco;
+            const MonacoRange = monacoInstance?.Range || (window as any).monaco?.Range;
+            console.log("user", user?.name, "remote cursor", remoteCursors)
+            const decorations = Object.entries(remoteCursors).map(([_, cursor]) => ({
+                range: new MonacoRange(
+                    cursor.line,
+                    cursor.column,
+                    cursor.line,
+                    cursor.column
+                ),
+                options: {
+                    className: `remote-cursor remote-cursor-color-${cursor.color.replace('#', '')}`,
+                    // beforeContentClassName: `remote-cursor-label remote-cursor-label-${cursor.color.replace('#', '')}`,
+                    hoverMessage: { value: cursor.name },
+                    // inlineClassName: `remote-cursor-color-${cursor.color.replace('#', '')}`, // Use color value
+                },
+            }));
+             // Clear previous decorations and set new ones
+            const newDecorationIds = editorRef.current.deltaDecorations(decorationIds, decorations);
+            setDecorationIds(newDecorationIds);
+        }
+    }, [remoteCursors]);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#1e1e1e' }}>

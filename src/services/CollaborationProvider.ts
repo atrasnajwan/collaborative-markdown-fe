@@ -9,8 +9,9 @@ export interface CursorPosition {
 }
 
 interface User {
-  id: string;
+  id: number;
   name: string;
+  color?: string
 }
 
 interface WebsocketProviderOptions {
@@ -31,10 +32,11 @@ export class CollaborationProvider {
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private maxReconnectAttempts = MAX_RECONNECT;
   private reconnectAttempts = 0;
+  private user: User
 
   constructor(documentId: string, user: User) {
     this.doc = new Y.Doc();
-    
+    this.user = user
     const wsUrl = `${config.websocketUrl}/documents/${documentId}`;
     const roomName = "edit"
     const token = localStorage.getItem('auth_token');
@@ -44,7 +46,7 @@ export class CollaborationProvider {
     }
 
     const providerOptions: WebsocketProviderOptions = {
-      connect: false,
+      connect: true,
       params: {
         token,
         userName: user.name,
@@ -71,25 +73,11 @@ export class CollaborationProvider {
 
     this.provider.on('connection-error', (event: Event) => {
       console.error('WebSocket connection error:', event);
+      this.handleDisconnection();
     });
 
-    // Initial connection
-    this.connect();
   }
 
-  private connect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      try {
-        console.log("connecting...")
-        this.provider.connect();
-      } catch (error) {
-        console.error('Failed to connect:', error);
-        this.handleDisconnection();
-      }
-    } else {
-      console.error('Max reconnection attempts reached');
-    }
-  }
 
   private handleDisconnection() {
     if (this.reconnectTimeout) {
@@ -101,7 +89,7 @@ export class CollaborationProvider {
       console.log(`Attempting to reconnect in ${RECONNECT_DELAY}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       
       this.reconnectTimeout = setTimeout(() => {
-        this.connect();
+        this.provider.connect()
       }, RECONNECT_DELAY);
     }
   }
@@ -114,6 +102,10 @@ export class CollaborationProvider {
     return this.text.toString();
   }
 
+  public getAwareness(): any {
+    return this.provider.awareness
+  }
+
   sendContentUpdate(content: string) {
     this.doc.transact(() => {
       this.text.delete(0, this.text.length);
@@ -122,10 +114,22 @@ export class CollaborationProvider {
   }
 
   sendCursorUpdate(cursor: CursorPosition) {
-    this.doc.transact(() => {
-      const awareness = this.provider.awareness;
-      awareness.setLocalStateField('cursor', cursor);
+    // Assign a color based on user id (simple hash or pick from array)
+    const userColor = this.getUserColor();
+    this.provider.awareness.setLocalState({
+      cursor,
+      user: {
+        id: this.user.id,
+        name: this.user.name,
+        color: userColor,
+      },
     });
+  }
+
+  private getUserColor(): string {
+    const colors = ['#ff4081', '#448aff', '#ffd600', '#00e676', '#ff1744', '#651fff'];
+    const idx = Math.abs(this.user.id) % colors.length
+    return colors[idx];
   }
 
   public destroy() {
