@@ -29,11 +29,6 @@ const EditDocument: React.FC = () => {
                 const document = await api.getDocument(id!);
                 setMarkdown(document.content);
                 setTitle(document.title);
-
-                // Initialize collaboration
-                if (id && user) {
-                    collaborationRef.current = new CollaborationProvider(id, user);
-                }
             } catch (error) {
                 console.error('Failed to fetch document:', error);
             }
@@ -41,14 +36,15 @@ const EditDocument: React.FC = () => {
 
         if (id && user) {
             fetchDocument();
+            collaborationRef.current = new CollaborationProvider(id, user);
+            
+            return () => {
+                if (collaborationRef.current) {
+                    collaborationRef.current.destroy();
+                    collaborationRef.current = null
+                }
+            };
         }
-
-        return () => {
-            if (collaborationRef.current) {
-                collaborationRef.current.destroy();
-                collaborationRef.current = null
-            }
-        };
     }, [id]);
 
     // handle received broadcast message
