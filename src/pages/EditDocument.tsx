@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { Box, Typography, AppBar, Toolbar } from '@mui/material';
+import { Box, Typography, AppBar, Toolbar, Button } from '@mui/material';
 import { api } from '../services/api';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -25,6 +25,7 @@ const EditDocument: React.FC = () => {
     const editorRef = useRef<any>(null);
     const [decorationIds, setDecorationIds] = useState<string[]>([]);
     const { user } = useAuth();
+    const [isSaving, setIsSaving] = useState<boolean>(false)
 
     useEffect(() => {
         const fetchDocument = async () => {
@@ -149,6 +150,17 @@ const EditDocument: React.FC = () => {
         }
     }, [remoteCursors]);
 
+    const handleUpdateDocument = async() => {
+        try {
+            setIsSaving(true)
+            await api.updateDocument(id!, markdown)
+        } catch(err) {
+            console.error('Failed to update document:', err)
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#1e1e1e' }}>
             {/* Header */}
@@ -157,6 +169,8 @@ const EditDocument: React.FC = () => {
                     <Typography variant="h6" component="h1" sx={{ color: '#fff', fontWeight: 500 }}>
                         {title || 'Untitled Document'}
                     </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Button variant='contained' disabled={isSaving} onClick={handleUpdateDocument}>Save</Button>
                 </Toolbar>
             </AppBar>
 
@@ -171,7 +185,7 @@ const EditDocument: React.FC = () => {
                         onChange={handleEditorChange}
                         onMount={handleEditorDidMount}
                         theme="vs-dark"
-                        options={{
+                        options={{  
                             minimap: { enabled: false },
                             fontSize: 14,
                             lineNumbers: 'on',

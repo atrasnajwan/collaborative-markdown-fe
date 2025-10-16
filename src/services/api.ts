@@ -138,6 +138,13 @@ class ApiService {
   async getDocument(id: string | number): Promise<Document> {
     return this.request<Document>(`/documents/${id}`);
   }
+
+  async updateDocument(id: string | number, content: string): Promise<void> {
+    return this.request(`/documents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content: content }),
+    });
+  }
 }
 
 export const api = new ApiService(); 
