@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { Box, Typography, AppBar, Toolbar, Button } from '@mui/material';
+import { Box, Typography, AppBar, Toolbar } from '@mui/material';
 import { api } from '../services/api';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -15,6 +15,7 @@ import '../styles/markdown.css';
 import Editor from '@monaco-editor/react';
 import { CollaborationProvider } from '../services/CollaborationProvider';
 import { useAuth } from '../contexts/AuthContext';
+import { MonacoBinding } from "y-monaco"
 
 const EditDocument: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -25,14 +26,12 @@ const EditDocument: React.FC = () => {
     const editorRef = useRef<any>(null);
     const [decorationIds, setDecorationIds] = useState<string[]>([]);
     const { user } = useAuth();
-    const [isSaving, setIsSaving] = useState<boolean>(false)
 
     useEffect(() => {
         const fetchDocument = async () => {
             try {
-                const document = await api.getDocument(id!);
-                setMarkdown(document.content);
-                setTitle(document.title);
+                const doc = await api.getDocument(id!);
+                setTitle(doc.title);
             } catch (error) {
                 console.error('Failed to fetch document:', error);
             }
@@ -41,7 +40,7 @@ const EditDocument: React.FC = () => {
         if (id && user) {
             fetchDocument();
             collaborationRef.current = new CollaborationProvider(id, user);
-            
+
             return () => {
                 if (collaborationRef.current) {
                     collaborationRef.current.destroy();
@@ -51,14 +50,9 @@ const EditDocument: React.FC = () => {
         }
     }, [id, user]);
 
-    // handle received broadcast message
     useEffect(() => {
         if (!collaborationRef.current) return;
 
-        // Sync markdown content from Yjs
-        const yText = collaborationRef.current.getText();
-        const updateHandler = () => setMarkdown(yText.toString());
-        yText.observe(updateHandler);
 
         // Sync remote cursors from awareness
         const awareness = collaborationRef.current.getAwareness();
@@ -81,26 +75,26 @@ const EditDocument: React.FC = () => {
         awareness.on('change', onAwarenessChange);
         // Cleanup both observers
         return () => {
-            yText.unobserve(updateHandler);
             awareness.off('change', onAwarenessChange);
         };
     }, [collaborationRef.current, user]);
 
-    const handleEditorChange = (value: string | undefined) => {
-        if (value !== undefined) {
-            setMarkdown(value);
-            if (collaborationRef.current) {
-                collaborationRef.current.sendContentUpdate(value);
-            }
-        }
-    };
-
     // cursor update
     const handleEditorDidMount = (editor: any) => {
+        if (!collaborationRef.current) return;
+
         editorRef.current = editor;
+        const model = editor.getModel()
+        if (!model) return
+
+        new MonacoBinding(
+          collaborationRef.current?.getText(),
+          model,
+          new Set([editor]),
+          collaborationRef.current?.getAwareness()
+        )
         editor.onDidChangeCursorPosition((_e: any) => {
             if (collaborationRef.current && user) {
-                const model = editor.getModel();
                 const selection = editor.getSelection();
                 
                 if (model && selection) {
@@ -119,7 +113,7 @@ const EditDocument: React.FC = () => {
                 }
             }
         });
-        console.log('Awareness states:', collaborationRef.current?.getAwareness().getStates());
+        // console.log('Awareness states:', collaborationRef.current?.getAwareness().getStates());
     };
 
     useEffect(() => {
@@ -150,17 +144,23 @@ const EditDocument: React.FC = () => {
         }
     }, [remoteCursors]);
 
-    const handleUpdateDocument = async() => {
-        try {
-            setIsSaving(true)
-            await api.updateDocument(id!, markdown)
-        } catch(err) {
-            console.error('Failed to update document:', err)
-        } finally {
-            setIsSaving(false)
-        }
-    }
 
+    useEffect(() => {
+        const updatePreview = () => {
+            setMarkdown(collaborationRef.current?.getContent())
+        }
+
+        // initial render
+        updatePreview()
+
+        collaborationRef.current?.text.observe(updatePreview)
+
+        return () => {
+            collaborationRef.current?.text.unobserve(updatePreview)
+        }
+    }, [collaborationRef.current?.text])
+
+    
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#1e1e1e' }}>
             {/* Header */}
@@ -169,8 +169,6 @@ const EditDocument: React.FC = () => {
                     <Typography variant="h6" component="h1" sx={{ color: '#fff', fontWeight: 500 }}>
                         {title || 'Untitled Document'}
                     </Typography>
-                    <Box sx={{ flexGrow: 1 }} />
-                    <Button variant='contained' disabled={isSaving} onClick={handleUpdateDocument}>Save</Button>
                 </Toolbar>
             </AppBar>
 
@@ -181,8 +179,6 @@ const EditDocument: React.FC = () => {
                     <Editor
                         height="100%"
                         defaultLanguage="markdown"
-                        value={markdown}
-                        onChange={handleEditorChange}
                         onMount={handleEditorDidMount}
                         theme="vs-dark"
                         options={{  

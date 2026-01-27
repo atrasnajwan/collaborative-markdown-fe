@@ -45,6 +45,10 @@ const Documents: React.FC = () => {
     }
   };
 
+  const toEditPage = (id: Number) => {
+    navigate(`/documents/${id}/edit`)
+  } 
+  
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-primary">
@@ -96,10 +100,10 @@ const Documents: React.FC = () => {
               <div
                 key={doc.id}
                 className="bg-card-bg p-6 rounded-lg shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-200 cursor-pointer"
-                onClick={() => navigate(`/documents/${doc.id}/edit`)}
+                onClick={() => toEditPage(doc.id)}
               >
                 <h2 className="text-xl font-semibold text-text-primary mb-2">{doc.title}</h2>
-                <p className="text-text-secondary mb-4 line-clamp-2">{doc.content}</p>
+                <p className="text-text-secondary mb-4 line-clamp-2">{}</p>
                 <div className="flex justify-between text-sm text-text-secondary">
                   <span>Created: {new Date(doc.created_at).toLocaleDateString()}</span>
                   <span>Updated: {new Date(doc.updated_at).toLocaleDateString()}</span>

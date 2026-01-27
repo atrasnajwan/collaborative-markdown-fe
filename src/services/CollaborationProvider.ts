@@ -28,7 +28,7 @@ const RECONNECT_DELAY = 1000
 export class CollaborationProvider {
   private doc: Y.Doc;
   private provider: WebsocketProvider;
-  private text: Y.Text;
+  public text: Y.Text;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private maxReconnectAttempts = MAX_RECONNECT;
   private reconnectAttempts = 0;
@@ -37,9 +37,9 @@ export class CollaborationProvider {
   constructor(documentId: string, user: User) {
     this.doc = new Y.Doc();
     this.user = user
-    const wsUrl = `${config.websocketUrl}/documents/${documentId}`;
-    const roomName = "edit"
+    const roomName = `doc-${documentId}`
     const token = localStorage.getItem('auth_token');
+    const wsUrl = `${config.websocketUrl}`;
 
     if (!token) {
       throw new Error('Authentication token not found');
@@ -59,7 +59,7 @@ export class CollaborationProvider {
       this.doc,
       providerOptions
     );
-
+    // "content" is only identifier
     this.text = this.doc.getText('content');
 
     this.provider.on('status', ({ status }: { status: 'connected' | 'disconnected' | 'connecting' }) => {
@@ -105,13 +105,7 @@ export class CollaborationProvider {
   public getAwareness(): any {
     return this.provider.awareness
   }
-
-  sendContentUpdate(content: string) {
-    this.doc.transact(() => {
-      this.text.delete(0, this.text.length);
-      this.text.insert(0, content);
-    });
-  }
+  
 
   sendCursorUpdate(cursor: CursorPosition) {
     // Assign a color based on user id (simple hash or pick from array)

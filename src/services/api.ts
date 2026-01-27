@@ -14,7 +14,6 @@ export interface LoginResponse {
 export interface Document {
   id: number;
   title: string;
-  content: string;
   created_at: string;
   updated_at: string;
   user_id: number;
@@ -40,14 +39,18 @@ export interface GetDocumentsParams {
 class ApiService {
   private token: string | null = null;
 
+  constructor() {
+    this.token = localStorage?.getItem('auth_token') || null
+  }
+
   setToken(token: string) {
     this.token = token;
-    localStorage.setItem('auth_token', token);
+    localStorage.setItem('auth_token', token)
   }
 
   getToken(): string | null {
     if (!this.token) {
-      this.token = localStorage.getItem('auth_token');
+      this.token = localStorage.getItem('auth_token')
     }
     return this.token;
   }
@@ -139,12 +142,6 @@ class ApiService {
     return this.request<Document>(`/documents/${id}`);
   }
 
-  async updateDocument(id: string | number, content: string): Promise<void> {
-    return this.request(`/documents/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ content: content }),
-    });
-  }
 }
 
 export const api = new ApiService(); 
