@@ -11,12 +11,24 @@ export interface LoginResponse {
   user: User;
 }
 
+export enum UserRole {
+    Owner = "owner",
+    Editor = "editor",
+    Viewer = "viewer",
+    None = "none"
+}
+
+export type Collaborator = {
+  user: User
+  role: "owner" | "editor" | "viewer"
+}
+
 export interface Document {
   id: number;
   title: string;
   created_at: string;
   updated_at: string;
-  user_id: number;
+  role: UserRole;
 }
 
 export interface PaginationMeta {
@@ -78,7 +90,7 @@ class ApiService {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
+      const error = await response.json();
       throw new Error(error.message || 'An error occurred');
     }
 
@@ -131,6 +143,10 @@ class ApiService {
     return this.request<User>('/profile');
   }
 
+  async searchUser(query: string): Promise<User[]> {
+    return this.request<User[]>(`/users?q=${query}`);
+  }
+
   async createDocument(title: string): Promise<Document> {
     return this.request<Document>('/documents', {
       method: 'POST',
@@ -142,6 +158,16 @@ class ApiService {
     return this.request<Document>(`/documents/${id}`);
   }
 
+  async getDocumentCollaborators(id: string | number): Promise<Collaborator[]> {
+    return this.request<Collaborator[]>(`/documents/${id}/collaborators`);
+  }
+
+  async addDocumentCollaborator(docId: number | string, userId: number, role: UserRole): Promise<Collaborator> {
+    return this.request<Collaborator>(`/documents/${docId}/collaborators`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, role }),
+    });
+  }
 }
 
 export const api = new ApiService(); 

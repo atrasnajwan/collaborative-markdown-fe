@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { Box, Typography, AppBar, Toolbar } from '@mui/material';
-import { api } from '../services/api';
+import { api, UserRole } from '../services/api';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
@@ -22,6 +22,7 @@ const EditDocument: React.FC = () => {
     const [markdown, setMarkdown] = useState<string>('');
     const [remoteCursors, setRemoteCursors] = useState<{ [userId: string]: { line: number; column: number; color: string; name: string } }>({});
     const [title, setTitle] = useState<string>('');
+    const [userRole, setUserRole] = useState<string>('');
     const collaborationRef = useRef<CollaborationProvider | null>(null);
     const editorRef = useRef<any>(null);
     const [decorationIds, setDecorationIds] = useState<string[]>([]);
@@ -32,6 +33,8 @@ const EditDocument: React.FC = () => {
             try {
                 const doc = await api.getDocument(id!);
                 setTitle(doc.title);
+                setUserRole(doc.role)
+                if (doc.role === UserRole.None) alert("You don't have permission to access this document!")
             } catch (error) {
                 console.error('Failed to fetch document:', error);
             }
@@ -147,7 +150,9 @@ const EditDocument: React.FC = () => {
 
     useEffect(() => {
         const updatePreview = () => {
-            setMarkdown(collaborationRef.current?.getContent())
+            if (collaborationRef.current) {
+                setMarkdown(collaborationRef.current.getContent())
+            }
         }
 
         // initial render
@@ -182,6 +187,8 @@ const EditDocument: React.FC = () => {
                         onMount={handleEditorDidMount}
                         theme="vs-dark"
                         options={{  
+                            readOnly: userRole === UserRole.Viewer,
+                            domReadOnly: userRole === UserRole.Viewer,
                             minimap: { enabled: false },
                             fontSize: 14,
                             lineNumbers: 'on',

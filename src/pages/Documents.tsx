@@ -1,21 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { api, Document } from '../services/api';
+import { api, Collaborator, Document, User } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import IconButton from '@mui/material/IconButton';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ShareIcon from '@mui/icons-material/Share';
+import DeleteIcon from '@mui/icons-material/Delete';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ShareDocumentModal from '../components/ShareDocumentModal';
+import CreateDocumentModal from '../components/CreateDocumentModal';
 
+interface DocumentCollaborator extends Document {
+  collaborators?: Collaborator[]
+}
 const Documents: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentCollaborator>()
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newDocumentTitle, setNewDocumentTitle] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchDocuments();
   }, []);
+
 
   const fetchDocuments = async () => {
     try {
@@ -28,27 +40,63 @@ const Documents: React.FC = () => {
     }
   };
 
-  const handleCreateDocument = async (e: React.FormEvent) => {
+  const handleCreateDocument = async (e: React.FormEvent, title: string) => {
     e.preventDefault();
-    if (!newDocumentTitle.trim()) return;
 
-    setIsCreating(true);
     try {
-      const newDocument = await api.createDocument(newDocumentTitle);
+      const newDocument = await api.createDocument(title);
       setDocuments([newDocument, ...documents]);
-      setNewDocumentTitle('');
+      // setNewDocumentTitle('');
       setIsCreateModalOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create document');
-    } finally {
-      setIsCreating(false);
-    }
+    } 
   };
 
   const toEditPage = (id: Number) => {
     navigate(`/documents/${id}/edit`)
   } 
   
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
+  const handleOpenMenu = (event: any, doc: Document) => {
+    event.stopPropagation(); // Prevents card's onClick
+    setAnchorEl(event.currentTarget);
+    // setSelectedDocument(doc)
+    api.getDocumentCollaborators(doc.id)
+    .then((collaborators) => {
+      setSelectedDocument({
+        ...doc,
+        collaborators: collaborators
+      })
+    }).catch((err) => console.log(err))
+    // setDocCollaborators(doc)
+  };
+
+  const setDocCollaborators = (doc: Document) => {
+    api.getDocumentCollaborators(doc.id)
+    .then((collaborators) => {
+      setSelectedDocument({
+        ...doc,
+        collaborators: collaborators
+      })
+    }).catch((err) => console.log(err))
+  }
+
+
+  const handleCloseMenu = (event: any) => {
+    if (event) event.stopPropagation();
+    setAnchorEl(null);
+  };
+
+  const handleShare = (event: any) => {
+    event.stopPropagation();
+    // console.log("Sharing doc:", doc.id);
+    // handleCloseMenu(null);
+    setIsShareModalOpen(true)
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-primary">
@@ -56,6 +104,7 @@ const Documents: React.FC = () => {
       </div>
     );
   }
+  
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -99,9 +148,32 @@ const Documents: React.FC = () => {
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="bg-card-bg p-6 rounded-lg shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-200 cursor-pointer"
+                className="relative bg-card-bg p-6 rounded-lg shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-200 cursor-pointer"
                 onClick={() => toEditPage(doc.id)}
               >
+                <div className="absolute top-4 right-2">
+                  <IconButton 
+                    onClick={(e) => handleOpenMenu(e, doc)}
+                    size="small"
+                    sx={{ color: 'var(--text-secondary)' }}
+                  >
+                    <MoreVertIcon fontSize="small" />
+                  </IconButton>
+                  
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={open}
+                    onClose={handleCloseMenu}
+                    onClick={(e) => e.stopPropagation()} // Stop menu clicks from bubbling
+                  >
+                    <MenuItem onClick={handleShare}>
+                      <ShareIcon fontSize="small" sx={{ mr: 1 }} /> Share
+                    </MenuItem>
+                    <MenuItem onClick={handleShare}>
+                      <DeleteIcon fontSize="small" sx={{ mr: 1 }} color='red'/> Delete
+                    </MenuItem>
+                  </Menu>
+              </div>
                 <h2 className="text-xl font-semibold text-text-primary mb-2">{doc.title}</h2>
                 <p className="text-text-secondary mb-4 line-clamp-2">{}</p>
                 <div className="flex justify-between text-sm text-text-secondary">
@@ -115,40 +187,17 @@ const Documents: React.FC = () => {
       </main>
 
       {/* Create Document Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-card-bg rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold text-text-primary mb-4">Create New Document</h2>
-            <form onSubmit={handleCreateDocument}>
-              <input
-                type="text"
-                value={newDocumentTitle}
-                onChange={(e) => setNewDocumentTitle(e.target.value)}
-                placeholder="Document title"
-                className="w-full p-2 rounded-md bg-bg-primary border border-accent-primary/20 text-text-primary mb-4"
-                disabled={isCreating}
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-md text-text-secondary hover:text-accent-primary transition-colors"
-                  disabled={isCreating}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-md bg-accent-primary text-white hover:bg-accent-primary/90 transition-colors disabled:opacity-50"
-                  disabled={isCreating || !newDocumentTitle.trim()}
-                >
-                  {isCreating ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateDocumentModal
+        open={isCreateModalOpen}
+        handleCreateDocument={handleCreateDocument}
+        onClose={async () => setIsCreateModalOpen(false)}
+      />
+      <ShareDocumentModal
+        open={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        documentId={selectedDocument?.id}
+        collaborators={selectedDocument?.collaborators}
+      />
     </div>
   );
 };

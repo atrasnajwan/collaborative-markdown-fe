@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import Chip from '@mui/material/Chip';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const Landing: React.FC = () => {
             transition={{ duration: 0.8, delay: 1 }}
             className="bg-card-bg p-8 rounded-xl shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-300"
           >
-            <h3 className="text-2xl font-bold text-accent-primary mb-4">Version History</h3>
+            <h3 className="text-2xl font-bold text-accent-primary mb-4">Version History<Chip color="info" label="Coming Soon"/></h3>
             <p className="text-text-secondary">Track changes and revert to previous versions at any time.</p>
           </motion.div>
         </div>
