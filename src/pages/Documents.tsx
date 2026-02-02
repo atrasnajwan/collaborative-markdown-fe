@@ -4,12 +4,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import IconButton from '@mui/material/IconButton';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import ShareIcon from '@mui/icons-material/Share';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import ShareDocumentModal from '../components/ShareDocumentModal';
 import CreateDocumentModal from '../components/CreateDocumentModal';
+import { red } from '@mui/material/colors';
 
 interface DocumentCollaborator extends Document {
   collaborators?: Collaborator[]
@@ -63,27 +64,8 @@ const Documents: React.FC = () => {
   const handleOpenMenu = (event: any, doc: Document) => {
     event.stopPropagation(); // Prevents card's onClick
     setAnchorEl(event.currentTarget);
-    // setSelectedDocument(doc)
-    api.getDocumentCollaborators(doc.id)
-    .then((collaborators) => {
-      setSelectedDocument({
-        ...doc,
-        collaborators: collaborators
-      })
-    }).catch((err) => console.log(err))
-    // setDocCollaborators(doc)
+    setSelectedDocument(doc)
   };
-
-  const setDocCollaborators = (doc: Document) => {
-    api.getDocumentCollaborators(doc.id)
-    .then((collaborators) => {
-      setSelectedDocument({
-        ...doc,
-        collaborators: collaborators
-      })
-    }).catch((err) => console.log(err))
-  }
-
 
   const handleCloseMenu = (event: any) => {
     if (event) event.stopPropagation();
@@ -92,8 +74,6 @@ const Documents: React.FC = () => {
 
   const handleShare = (event: any) => {
     event.stopPropagation();
-    // console.log("Sharing doc:", doc.id);
-    // handleCloseMenu(null);
     setIsShareModalOpen(true)
   };
 
@@ -167,10 +147,10 @@ const Documents: React.FC = () => {
                     onClick={(e) => e.stopPropagation()} // Stop menu clicks from bubbling
                   >
                     <MenuItem onClick={handleShare}>
-                      <ShareIcon fontSize="small" sx={{ mr: 1 }} /> Share
+                      <PersonAddAltIcon fontSize='small'sx={{ mr: 1 }} /> Share
                     </MenuItem>
-                    <MenuItem onClick={handleShare}>
-                      <DeleteIcon fontSize="small" sx={{ mr: 1 }} color='red'/> Delete
+                    <MenuItem onClick={handleShare} sx={{ color: red[500] }} >
+                      <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Delete
                     </MenuItem>
                   </Menu>
               </div>
@@ -196,7 +176,6 @@ const Documents: React.FC = () => {
         open={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         documentId={selectedDocument?.id}
-        collaborators={selectedDocument?.collaborators}
       />
     </div>
   );

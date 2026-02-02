@@ -168,6 +168,19 @@ class ApiService {
       body: JSON.stringify({ user_id: userId, role }),
     });
   }
+
+  async changeCollaboratorRole(docId: number | string, userId: number, role: UserRole): Promise<Collaborator> {
+    return this.request<Collaborator>(`/documents/${docId}/collaborators`, {
+      method: 'PUT',
+      body: JSON.stringify({ user_id: userId, role }),
+    });
+  }
+
+  async removeDocumentCollaborator(docId: number | string, userId: number): Promise<void> {
+    return this.request<void>(`/documents/${docId}/collaborators/${userId}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const api = new ApiService(); 
