@@ -94,6 +94,10 @@ class ApiService {
       throw new Error(error.message || 'An error occurred');
     }
 
+    if (response.status === 204) {
+      return {} as T
+    }
+    
     return response.json();
   }
 
@@ -178,6 +182,12 @@ class ApiService {
 
   async removeDocumentCollaborator(docId: number | string, userId: number): Promise<void> {
     return this.request<void>(`/documents/${docId}/collaborators/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async removeDocument(docId: number | string): Promise<void> {
+    return this.request<void>(`/documents/${docId}`, {
       method: 'DELETE',
     });
   }

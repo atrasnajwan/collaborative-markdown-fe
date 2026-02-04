@@ -3,6 +3,7 @@ import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogC
 import { useEffect, useState } from "react"
 import { api, Collaborator, User, UserRole } from "../services/api"
 import { red } from "@mui/material/colors"
+import DeleteDialog from "./DeleteDialog"
 
 type ShareDocumentModalProps = {
   open: boolean
@@ -233,9 +234,9 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
     </Dialog>
     {
       userToDelete && (
-        <DeleteAccessDialog
+        <DeleteDialog
           open={deleteConfirmOpen}
-          user={userToDelete}
+          description={`Do you really want to remove ${userToDelete.user.name} (${userToDelete.user.email}) to access this document?`}
           onClose={() => setDeleteConfirmOpen(false)}
           loading={loading.delete}
           onConfirm={handleDeleteUserAccess}
@@ -246,36 +247,4 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
   )
 }
 
-type DeleteAccessDialogProps = {
-  open: boolean
-  user: Collaborator
-  onClose: () => void
-  onConfirm: () => void
-  loading: boolean
-}
-const DeleteAccessDialog: React.FC<DeleteAccessDialogProps> = ({open, user, onClose, onConfirm, loading}) => (
-  <Dialog
-        open={open}
-        onClose={onClose}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            {
-              `Do you really want to remove ${user.user.name} (${user.user.email}) to access this document?`
-            }
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} autoFocus>Not really</Button>
-          <Button
-            onClick={onConfirm}
-            sx={{ color: red[500] }}
-            loading={loading}
-            loadingPosition="end"
-          >Yeah, I'm sure</Button>
-        </DialogActions>
-      </Dialog>
-)
 export default ShareDocumentModal

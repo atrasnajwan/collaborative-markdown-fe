@@ -2,26 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { api, Collaborator, Document } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import IconButton from '@mui/material/IconButton';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import DeleteIcon from '@mui/icons-material/Delete';
-import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
+
 import ShareDocumentModal from '../components/ShareDocumentModal';
 import CreateDocumentModal from '../components/CreateDocumentModal';
-import { red } from '@mui/material/colors';
+import DocumentCard from '../components/DocumentCard';
+import DeleteDialog from '../components/DeleteDialog';
 
-interface DocumentCollaborator extends Document {
-  collaborators?: Collaborator[]
-}
 const Documents: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<DocumentCollaborator>()
+  const [selectedDocument, setSelectedDocument] = useState<Document>()
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -47,7 +42,6 @@ const Documents: React.FC = () => {
     try {
       const newDocument = await api.createDocument(title);
       setDocuments([newDocument, ...documents]);
-      // setNewDocumentTitle('');
       setIsCreateModalOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create document');
@@ -75,6 +69,29 @@ const Documents: React.FC = () => {
   const handleShare = (event: any) => {
     event.stopPropagation();
     setIsShareModalOpen(true)
+  };
+
+  const handleDelete = (event: any) => {
+    event.stopPropagation();
+    setIsDeleteModalOpen(true)
+  };
+
+
+  const handleConfirmDelete = async () => {
+    if (!selectedDocument) return
+    setIsDeleteLoading(true)
+            try {
+              await api.removeDocument(selectedDocument.id)
+              const newDocuments = documents.filter(doc => doc.id !== selectedDocument.id)
+              setDocuments(newDocuments);
+              setSelectedDocument(undefined)
+              setAnchorEl(null);
+            } catch(err) {
+              console.log(err)
+            } finally {
+              setIsDeleteModalOpen(false)
+              setIsDeleteLoading(false)
+            }
   };
 
   if (isLoading) {
@@ -126,41 +143,17 @@ const Documents: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {documents.map((doc) => (
-              <div
+              <DocumentCard
                 key={doc.id}
-                className="relative bg-card-bg p-6 rounded-lg shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-200 cursor-pointer"
-                onClick={() => toEditPage(doc.id)}
-              >
-                <div className="absolute top-4 right-2">
-                  <IconButton 
-                    onClick={(e) => handleOpenMenu(e, doc)}
-                    size="small"
-                    sx={{ color: 'var(--text-secondary)' }}
-                  >
-                    <MoreVertIcon fontSize="small" />
-                  </IconButton>
-                  
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={open}
-                    onClose={handleCloseMenu}
-                    onClick={(e) => e.stopPropagation()} // Stop menu clicks from bubbling
-                  >
-                    <MenuItem onClick={handleShare}>
-                      <PersonAddAltIcon fontSize='small'sx={{ mr: 1 }} /> Share
-                    </MenuItem>
-                    <MenuItem onClick={handleShare} sx={{ color: red[500] }} >
-                      <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Delete
-                    </MenuItem>
-                  </Menu>
-              </div>
-                <h2 className="text-xl font-semibold text-text-primary mb-2">{doc.title}</h2>
-                <p className="text-text-secondary mb-4 line-clamp-2">{}</p>
-                <div className="flex justify-between text-sm text-text-secondary">
-                  <span>Created: {new Date(doc.created_at).toLocaleDateString()}</span>
-                  <span>Updated: {new Date(doc.updated_at).toLocaleDateString()}</span>
-                </div>
-              </div>
+                doc={doc}
+                onClick={toEditPage}
+                onClickMenu={handleOpenMenu}
+                onClickShare={handleShare}
+                onClickDelete={handleDelete}
+                isMenuOpen={open}
+                onCloseMenu={handleCloseMenu}
+                anchorEl={anchorEl}
+              />
             ))}
           </div>
         )}
@@ -174,11 +167,20 @@ const Documents: React.FC = () => {
       />
       {
         selectedDocument && (
-          <ShareDocumentModal
-            open={isShareModalOpen}
-            onClose={() => setIsShareModalOpen(false)}
-            documentId={selectedDocument?.id}
-          />
+          <>
+            <ShareDocumentModal
+              open={isShareModalOpen}
+              onClose={() => setIsShareModalOpen(false)}
+              documentId={selectedDocument?.id}
+            />
+            <DeleteDialog
+                      open={isDeleteModalOpen}
+                      description={`Do you really want to delete document ${selectedDocument.title}?`}
+                      onClose={() => setIsDeleteModalOpen(false)}
+                      loading={isDeleteLoading}
+                      onConfirm={handleConfirmDelete}
+                    />
+          </>
         )
       }
     </div>
