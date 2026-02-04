@@ -87,13 +87,13 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
         setUserToDelete(currUser)
         setDeleteConfirmOpen(true)
     } else {
-      if (newRole === currUser?.role) return
+      if (!newRole || !currUser || newRole === currUser?.role) return
   
        setLoading(prev => ({...prev, change: true}))
         try {
           await api.changeCollaboratorRole(documentId, userId, newRole)
         } catch(err) {
-          setRole(prev => new Map([...prev, [userId, currUser?.role]])) // rollback role
+          setRole(prev => new Map([...prev, [userId, currUser.role as UserRole]])) // rollback role
           console.log(err)
         } finally {
            setLoading(prev => ({...prev, change: false}))

@@ -1,5 +1,5 @@
 export interface User {
-    id: string;
+    id: number;
     name: string;
     email: string;
 }
@@ -7,12 +7,22 @@ export interface LoginResponse {
     token: string;
     user: User;
 }
+export declare enum UserRole {
+    Owner = "owner",
+    Editor = "editor",
+    Viewer = "viewer",
+    None = "none"
+}
+export type Collaborator = {
+    user: User;
+    role: "owner" | "editor" | "viewer";
+};
 export interface Document {
     id: number;
     title: string;
     created_at: string;
     updated_at: string;
-    user_id: number;
+    role: UserRole;
 }
 export interface PaginationMeta {
     total: number;
@@ -30,6 +40,7 @@ export interface GetDocumentsParams {
 }
 declare class ApiService {
     private token;
+    constructor();
     setToken(token: string): void;
     getToken(): string | null;
     clearToken(): void;
@@ -39,8 +50,13 @@ declare class ApiService {
     getDocuments(params?: GetDocumentsParams): Promise<PaginatedResponse<Document>>;
     logout(): Promise<void>;
     getCurrentUser(): Promise<User>;
+    searchUser(query: string): Promise<User[]>;
     createDocument(title: string): Promise<Document>;
     getDocument(id: string | number): Promise<Document>;
+    getDocumentCollaborators(id: string | number): Promise<Collaborator[]>;
+    addDocumentCollaborator(docId: number | string, userId: number, role: UserRole): Promise<Collaborator>;
+    changeCollaboratorRole(docId: number | string, userId: number, role: UserRole): Promise<Collaborator>;
+    removeDocumentCollaborator(docId: number | string, userId: number): Promise<void>;
 }
 export declare const api: ApiService;
 export {};

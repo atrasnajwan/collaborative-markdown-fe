@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, Collaborator, Document, User } from '../services/api';
+import { api, Collaborator, Document } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import IconButton from '@mui/material/IconButton';
@@ -172,11 +172,15 @@ const Documents: React.FC = () => {
         handleCreateDocument={handleCreateDocument}
         onClose={async () => setIsCreateModalOpen(false)}
       />
-      <ShareDocumentModal
-        open={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        documentId={selectedDocument?.id}
-      />
+      {
+        selectedDocument && (
+          <ShareDocumentModal
+            open={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            documentId={selectedDocument?.id}
+          />
+        )
+      }
     </div>
   );
 };

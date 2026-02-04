@@ -18,7 +18,7 @@ interface WebsocketProviderOptions {
   connect: boolean;
   params: {
     token: string;
-    userName: string;
+    // userName: string;
   };
 }
 
@@ -27,7 +27,7 @@ const RECONNECT_DELAY = 1000
 
 export class CollaborationProvider {
   private doc: Y.Doc;
-  private provider: WebsocketProvider;
+  public provider: WebsocketProvider;
   public text: Y.Text;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private maxReconnectAttempts = MAX_RECONNECT;
@@ -49,7 +49,7 @@ export class CollaborationProvider {
       connect: true,
       params: {
         token,
-        userName: user.name,
+        // userName: user.name,
       },
     };
 
@@ -75,7 +75,7 @@ export class CollaborationProvider {
       console.error('WebSocket connection error:', event);
       this.handleDisconnection();
     });
-
+    
   }
 
 

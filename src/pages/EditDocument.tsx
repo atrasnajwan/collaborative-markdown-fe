@@ -25,24 +25,30 @@ const EditDocument: React.FC = () => {
     const [userRole, setUserRole] = useState<string>('');
     const collaborationRef = useRef<CollaborationProvider | null>(null);
     const editorRef = useRef<any>(null);
+    const [synced, setSynced] = useState<boolean>(false)
     const [decorationIds, setDecorationIds] = useState<string[]>([]);
     const { user } = useAuth();
 
+    
+    const fetchDocument = async () => {
+        try {
+            const doc = await api.getDocument(id!);
+            setTitle(doc.title);
+            setUserRole(doc.role)
+            if (doc.role === UserRole.None) alert("You don't have permission to access this document!")
+        } catch (error) {
+            console.error('Failed to fetch document:', error);
+        }
+    };
     useEffect(() => {
-        const fetchDocument = async () => {
-            try {
-                const doc = await api.getDocument(id!);
-                setTitle(doc.title);
-                setUserRole(doc.role)
-                if (doc.role === UserRole.None) alert("You don't have permission to access this document!")
-            } catch (error) {
-                console.error('Failed to fetch document:', error);
-            }
-        };
-
-        if (id && user) {
+        if (!id || !user) return
             fetchDocument();
             collaborationRef.current = new CollaborationProvider(id, user);
+            
+            collaborationRef.current.provider.on("sync", (state: boolean) => {
+              console.log("SYNC:", state)
+              setSynced(state)
+            })
 
             return () => {
                 if (collaborationRef.current) {
@@ -50,12 +56,57 @@ const EditDocument: React.FC = () => {
                     collaborationRef.current = null
                 }
             };
-        }
     }, [id, user]);
+
+    const bindMonaco = () => {
+        if (!collaborationRef.current) return 
+        if (!editorRef.current || !synced) return
+
+        new MonacoBinding(
+          collaborationRef.current?.getText(),
+          editorRef.current?.getModel(),
+          new Set([editorRef.current]),
+          collaborationRef.current?.getAwareness()
+        )
+    }
+
+    const handleEditorDidMount = (editor: any) => {
+        if (!collaborationRef.current) return;
+
+        editorRef.current = editor;
+        bindMonaco()
+        
+        editor.onDidChangeCursorPosition((_e: any) => {
+            const model = editor.getModel()
+            if (!model) return
+            if (collaborationRef.current && user) {
+                const selection = editor.getSelection();
+                
+                if (model && selection) {
+                    const lineContent = model.getLineContent(selection.positionLineNumber);
+                    const lineLength = lineContent.length;
+                    
+                    // Check if cursor is at end of line
+                    const column = selection.positionColumn > lineLength ? 
+                        lineLength + 1 : selection.positionColumn;
+
+                    collaborationRef.current.sendCursorUpdate({
+                        line: selection.positionLineNumber,
+                        column: column,
+                        userName: user.name
+                    });
+                }
+            }
+        });
+        // console.log('Awareness states:', collaborationRef.current?.getAwareness().getStates());
+    };
+
+    useEffect(() => {
+        bindMonaco()
+    }, [synced])
 
     useEffect(() => {
         if (!collaborationRef.current) return;
-
 
         // Sync remote cursors from awareness
         const awareness = collaborationRef.current.getAwareness();
@@ -82,42 +133,6 @@ const EditDocument: React.FC = () => {
         };
     }, [collaborationRef.current, user]);
 
-    // cursor update
-    const handleEditorDidMount = (editor: any) => {
-        if (!collaborationRef.current) return;
-
-        editorRef.current = editor;
-        const model = editor.getModel()
-        if (!model) return
-
-        new MonacoBinding(
-          collaborationRef.current?.getText(),
-          model,
-          new Set([editor]),
-          collaborationRef.current?.getAwareness()
-        )
-        editor.onDidChangeCursorPosition((_e: any) => {
-            if (collaborationRef.current && user) {
-                const selection = editor.getSelection();
-                
-                if (model && selection) {
-                    const lineContent = model.getLineContent(selection.positionLineNumber);
-                    const lineLength = lineContent.length;
-                    
-                    // Check if cursor is at end of line
-                    const column = selection.positionColumn > lineLength ? 
-                        lineLength + 1 : selection.positionColumn;
-
-                    collaborationRef.current.sendCursorUpdate({
-                        line: selection.positionLineNumber,
-                        column: column,
-                        userName: user.name
-                    });
-                }
-            }
-        });
-        // console.log('Awareness states:', collaborationRef.current?.getAwareness().getStates());
-    };
 
     useEffect(() => {
         if (!editorRef.current || Object.keys(remoteCursors).length === 0) return;
@@ -136,9 +151,9 @@ const EditDocument: React.FC = () => {
                 ),
                 options: {
                     className: `remote-cursor remote-cursor-color-${cursor.color.replace('#', '')}`,
-                    // beforeContentClassName: `remote-cursor-label remote-cursor-label-${cursor.color.replace('#', '')}`,
+                    beforeContentClassName: `remote-cursor-label remote-cursor-label-${cursor.color.replace('#', '')}`,
                     hoverMessage: { value: cursor.name },
-                    // inlineClassName: `remote-cursor-color-${cursor.color.replace('#', '')}`, // Use color value
+                    inlineClassName: `remote-cursor-color-${cursor.color.replace('#', '')}`, // Use color value
                 },
             }));
              // Clear previous decorations and set new ones
@@ -176,9 +191,10 @@ const EditDocument: React.FC = () => {
                     </Typography>
                 </Toolbar>
             </AppBar>
-
             {/* Main Content */}
-            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+            {
+                synced ? (
+                    <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
                 {/* Editor Section */}
                 <Box sx={{ flex: 1, height: '100%', borderRight: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
                     <Editor
@@ -187,8 +203,8 @@ const EditDocument: React.FC = () => {
                         onMount={handleEditorDidMount}
                         theme="vs-dark"
                         options={{  
-                            readOnly: userRole === UserRole.Viewer,
-                            domReadOnly: userRole === UserRole.Viewer,
+                            readOnly: !synced || userRole === UserRole.Viewer,
+                            domReadOnly: !synced || userRole === UserRole.Viewer,
                             minimap: { enabled: false },
                             fontSize: 14,
                             lineNumbers: 'on',
@@ -236,6 +252,13 @@ const EditDocument: React.FC = () => {
                     </div>
                 </Box>
             </Box>
+                ) : (
+                <div className="min-h-screen flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2"></div>
+                </div>
+                )
+            }
+            
         </Box>
     );
 };
