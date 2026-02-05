@@ -33,8 +33,9 @@ export class CollaborationProvider {
   private maxReconnectAttempts = MAX_RECONNECT;
   private reconnectAttempts = 0;
   private user: User
+  public synced: boolean
 
-  constructor(documentId: string, user: User) {
+  constructor(documentId: string, user: User, onServerMessage: (e: any) => void ) {
     this.doc = new Y.Doc();
     this.user = user
     const roomName = `doc-${documentId}`
@@ -76,6 +77,22 @@ export class CollaborationProvider {
       this.handleDisconnection();
     });
     
+    this.synced = this.provider.synced
+    this.provider.on("sync", (state) => {
+      this.synced = state;
+      console.log("SYNC:", state)
+    });
+
+    this.provider.ws?.addEventListener("message", event => {
+      if (typeof event.data !== "string") return;
+
+      try {
+        const msg = JSON.parse(event.data);
+        onServerMessage(msg);
+      } catch (err) {
+        console.log(err)
+      }
+    });
   }
 
 

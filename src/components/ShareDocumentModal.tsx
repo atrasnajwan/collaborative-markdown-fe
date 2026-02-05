@@ -1,5 +1,5 @@
 import React from "react"
-import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, List, ListItem, ListItemText, MenuItem, Select, Stack, TextField, Typography } from "@mui/material"
+import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, List, ListItem, ListItemText, MenuItem, Select, Stack, TextField, Typography } from "@mui/material"
 import { useEffect, useState } from "react"
 import { api, Collaborator, User, UserRole } from "../services/api"
 import { red } from "@mui/material/colors"

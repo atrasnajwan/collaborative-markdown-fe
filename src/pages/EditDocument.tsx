@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { Box, Typography, AppBar, Toolbar } from '@mui/material';
 import { api, UserRole } from '../services/api';
@@ -28,36 +28,78 @@ const EditDocument: React.FC = () => {
     const [synced, setSynced] = useState<boolean>(false)
     const [decorationIds, setDecorationIds] = useState<string[]>([]);
     const { user } = useAuth();
+     const navigate = useNavigate();
 
     
     const fetchDocument = async () => {
         try {
+            // const doc = await api.getDocument(id!);
             const doc = await api.getDocument(id!);
             setTitle(doc.title);
             setUserRole(doc.role)
-            if (doc.role === UserRole.None) alert("You don't have permission to access this document!")
+            if (doc.role === UserRole.None) {
+                alert("You don't have permission to access this document!")
+                navigate(`/documents`)
+            }
         } catch (error) {
             console.error('Failed to fetch document:', error);
         }
     };
+
     useEffect(() => {
         if (!id || !user) return
             fetchDocument();
-            collaborationRef.current = new CollaborationProvider(id, user);
+            collaborationRef.current = new CollaborationProvider(id, user, handleServerMessage);
             
-            collaborationRef.current.provider.on("sync", (state: boolean) => {
-              console.log("SYNC:", state)
-              setSynced(state)
-            })
+            // Set initial sync state
+            setSynced(collaborationRef.current.synced);
+            
+            
+            const updatePreview = () => {
+                if (collaborationRef.current) {
+                    setMarkdown(collaborationRef.current.getContent())
+                }
+            }
+
+            // initial render
+            updatePreview()
+            collaborationRef.current?.text.observe(updatePreview)
 
             return () => {
                 if (collaborationRef.current) {
+                    // cleanup observer + provider
+                    collaborationRef.current.text.unobserve(updatePreview)
                     collaborationRef.current.destroy();
                     collaborationRef.current = null
                 }
             };
     }, [id, user]);
 
+    useEffect(() => {
+        if (!collaborationRef.current) return
+        setSynced(collaborationRef.current.synced)
+    }, [collaborationRef.current?.synced])
+
+
+    const handleServerMessage = (msg: any) => {
+        switch (msg.type) {
+        case "permission-changed":
+            // this.onPermissionChanged(msg.role);
+            setUserRole(msg.role)
+            alert(`Your role is changed to ${msg.role}`)
+            break;
+
+        case "kicked":
+          alert("You've been removed to access this document!")
+          navigate(`/documents`)
+          break;
+
+        case "document-deleted":
+          alert("This document has been deleted by the owner!")
+          navigate(`/documents`)
+          break;
+        }
+    }
     const bindMonaco = () => {
         if (!collaborationRef.current) return 
         if (!editorRef.current || !synced) return
@@ -100,10 +142,6 @@ const EditDocument: React.FC = () => {
         });
         // console.log('Awareness states:', collaborationRef.current?.getAwareness().getStates());
     };
-
-    useEffect(() => {
-        bindMonaco()
-    }, [synced])
 
     useEffect(() => {
         if (!collaborationRef.current) return;
@@ -163,24 +201,6 @@ const EditDocument: React.FC = () => {
     }, [remoteCursors]);
 
 
-    useEffect(() => {
-        const updatePreview = () => {
-            if (collaborationRef.current) {
-                setMarkdown(collaborationRef.current.getContent())
-            }
-        }
-
-        // initial render
-        updatePreview()
-
-        collaborationRef.current?.text.observe(updatePreview)
-
-        return () => {
-            collaborationRef.current?.text.unobserve(updatePreview)
-        }
-    }, [collaborationRef.current?.text])
-
-    
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#1e1e1e' }}>
             {/* Header */}
