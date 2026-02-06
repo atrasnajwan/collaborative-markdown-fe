@@ -93,6 +93,17 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
        setLoading(prev => ({...prev, change: true}))
         try {
           await api.changeCollaboratorRole(documentId, userId, newRole)
+          const newCollaborators = collaborators.map((c) => {
+            if (c.user.id === userId) {
+              return {
+                ...c,
+                role: newRole
+              }
+            } else {
+              return c
+            }
+          })
+          setCollaborators(newCollaborators)
         } catch(err) {
           setRole(prev => new Map([...prev, [userId, currUser.role as UserRole]])) // rollback role
           console.log(err)
@@ -199,7 +210,7 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
                   <Stack direction="row" spacing={1}>
                       <Select
                         size="small"
-                        value={role.get(collaborator.user.id)}
+                        value={role.get(collaborator.user.id) || UserRole.Editor}
                         onChange={(e) => onChangeRole(e, collaborator.user.id)}
                       >
                         <MenuItem value={UserRole.Editor}>Editor</MenuItem>
