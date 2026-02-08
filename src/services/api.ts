@@ -136,6 +136,23 @@ class ApiService {
     return this.request<PaginatedResponse<Document>>(endpoint);
   }
 
+  async getSharedDocuments(params: GetDocumentsParams = {}): Promise<PaginatedResponse<Document>> {
+    const queryParams = new URLSearchParams();
+
+    if (params.page) {
+      queryParams.append('page', params.page.toString());
+    }
+
+    if (params.per_page) {
+      queryParams.append('per_page', params.per_page.toString());
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = `/documents/shared${queryString ? `?${queryString}` : ''}`;
+
+    return this.request<PaginatedResponse<Document>>(endpoint);
+  }
+
   async logout(): Promise<void> {
     await this.request('/logout', {
       method: 'DELETE'
