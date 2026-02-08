@@ -36,18 +36,20 @@ export class CollaborationProvider {
   public synced: boolean
 
   constructor(documentId: string, user: User, onServerMessage: (e: any) => void ) {
+    console.log("Provider Created")
     this.doc = new Y.Doc();
     this.user = user
     const roomName = `doc-${documentId}`
     const token = localStorage.getItem('auth_token');
     const wsUrl = `${config.websocketUrl}`;
+    this.synced = false
 
     if (!token) {
       throw new Error('Authentication token not found');
     }
 
     const providerOptions: WebsocketProviderOptions = {
-      connect: true,
+      connect: false,
       params: {
         token,
         // userName: user.name,
@@ -67,8 +69,19 @@ export class CollaborationProvider {
       console.log('WebSocket status:', status);
       if (status === 'connected') {
         this.reconnectAttempts = 0;
-      } else if (status === 'connecting' && this.reconnectAttempts === this.maxReconnectAttempts) {
-        this.destroy()
+        this.customMessageListener(onServerMessage)
+
+        // if (this.provider.synced) {
+        //   this.synced = true;
+        //   console.log("Reconnected and already synced.");
+        // }
+        // Wait a tiny bit for the handshake
+        setTimeout(() => {
+          this.synced = this.provider.synced;
+          console.log("[YJS] Status connected, synced property is:", this.synced);
+        }, 100);
+      } else {
+        this.synced = false
       }
     });
 
@@ -77,12 +90,15 @@ export class CollaborationProvider {
       this.handleDisconnection();
     });
     
-    this.synced = this.provider.synced
     this.provider.on("sync", (state) => {
       this.synced = state;
       console.log("SYNC:", state)
-    });
+    });    
 
+    this.provider.connect()
+  }
+
+  private customMessageListener(onServerMessage: (e: any) => void) {
     this.provider.ws?.addEventListener("message", event => {
       if (typeof event.data !== "string") return;
 
@@ -94,7 +110,6 @@ export class CollaborationProvider {
       }
     });
   }
-
 
   private handleDisconnection() {
     if (this.reconnectTimeout) {
@@ -148,6 +163,7 @@ export class CollaborationProvider {
       clearTimeout(this.reconnectTimeout);
     }
     
+    this.provider.shouldConnect = false; // tells the library to STOP RETRYING
     if (this.provider.wsconnected) {
       this.provider.disconnect();
     }

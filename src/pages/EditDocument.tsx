@@ -80,23 +80,28 @@ const EditDocument: React.FC = () => {
         setSynced(collaborationRef.current.synced)
     }, [collaborationRef.current?.synced])
 
+    const handleKicked = (msg: string) => {
+         if (collaborationRef.current) {
+            collaborationRef.current.destroy();
+            collaborationRef.current = null
+        }
+        alert(msg)
+        navigate(`/documents`)
+    }
 
     const handleServerMessage = (msg: any) => {
         switch (msg.type) {
         case "permission-changed":
-            // this.onPermissionChanged(msg.role);
             setUserRole(msg.role)
             alert(`Your role is changed to ${msg.role}`)
             break;
 
         case "kicked":
-          alert("You've been removed to access this document!")
-          navigate(`/documents`)
+          handleKicked("You've been removed to access this document!")
           break;
 
         case "document-deleted":
-          alert("This document has been deleted by the owner!")
-          navigate(`/documents`)
+          handleKicked("This document has been deleted by the owner!")
           break;
         }
     }
