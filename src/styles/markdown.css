@@ -15,9 +15,15 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.markdown-preview h1 { font-size: 2rem; }
-.markdown-preview h2 { font-size: 1.5rem; }
-.markdown-preview h3 { font-size: 1.25rem; }
+.markdown-preview h1 {
+  font-size: 2rem;
+}
+.markdown-preview h2 {
+  font-size: 1.5rem;
+}
+.markdown-preview h3 {
+  font-size: 1.25rem;
+}
 
 .markdown-preview p {
   margin-bottom: 1rem;
@@ -122,42 +128,42 @@
   font-family: monospace;
   font-size: 14px;
   resize: none;
-} 
+}
 
 /* cursors */
 .remote-cursor {
-    border-left: 2px solid;
-    height: 1.2em !important;
-    margin-left: 0;
-    position: absolute;
-    z-index: 1000;
-    /* animation: blink 1s step-end infinite; */
-    width: 2px !important;
-    pointer-events: none;
-    background-color: inherit;
+  border-left: 2px solid;
+  height: 1.2em !important;
+  margin-left: 0;
+  position: absolute;
+  z-index: 1000;
+  /* animation: blink 1s step-end infinite; */
+  width: 2px !important;
+  pointer-events: none;
+  background-color: inherit;
 }
 
 .remote-cursor-color-ff4081 {
-    border-left-color: #ff4081;
-    background-color: #ff4081;
+  border-left-color: #ff4081;
+  background-color: #ff4081;
 }
 .remote-cursor-color-448aff {
-    border-left-color: #448aff;
-    background-color: #448aff;
+  border-left-color: #448aff;
+  background-color: #448aff;
 }
 .remote-cursor-color-ffd600 {
-    border-left-color: #ffd600;
-    background-color: #ffd600;
+  border-left-color: #ffd600;
+  background-color: #ffd600;
 }
 .remote-cursor-color-00e676 {
-    border-left-color: #00e676;
-    background-color: #00e676;
+  border-left-color: #00e676;
+  background-color: #00e676;
 }
 .remote-cursor-color-ff1744 {
-    border-left-color: #ff1744;
-    background-color: #ff1744;
+  border-left-color: #ff1744;
+  background-color: #ff1744;
 }
 .remote-cursor-color-651fff {
-    border-left-color: #651fff;
-    background-color: #651fff;
+  border-left-color: #651fff;
+  background-color: #651fff;
 }

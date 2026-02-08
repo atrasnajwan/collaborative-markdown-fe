@@ -1,13 +1,17 @@
-import React from 'react';
-import { CursorPosition } from '../services/CollaborationProvider';
+import React from 'react'
+import { CursorPosition } from '../services/CollaborationProvider'
 
 interface RemoteCursorProps {
-  cursor: CursorPosition;
-  editorLineHeight: number;
-  charWidth: number;
+  cursor: CursorPosition
+  editorLineHeight: number
+  charWidth: number
 }
 
-const RemoteCursor: React.FC<RemoteCursorProps> = ({ cursor, editorLineHeight, charWidth }) => {
+const RemoteCursor: React.FC<RemoteCursorProps> = ({
+  cursor,
+  editorLineHeight,
+  charWidth,
+}) => {
   const style: React.CSSProperties = {
     position: 'absolute',
     left: cursor.column * charWidth,
@@ -16,7 +20,7 @@ const RemoteCursor: React.FC<RemoteCursorProps> = ({ cursor, editorLineHeight, c
     height: editorLineHeight,
     backgroundColor: '#ff0000',
     pointerEvents: 'none',
-  };
+  }
 
   const labelStyle: React.CSSProperties = {
     position: 'absolute',
@@ -29,13 +33,13 @@ const RemoteCursor: React.FC<RemoteCursorProps> = ({ cursor, editorLineHeight, c
     fontSize: '12px',
     whiteSpace: 'nowrap',
     pointerEvents: 'none',
-  };
+  }
 
   return (
     <div style={style}>
       <div style={labelStyle}>{cursor.userName}</div>
     </div>
-  );
-};
+  )
+}
 
-export default RemoteCursor; 
+export default RemoteCursor

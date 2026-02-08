@@ -1,7 +1,7 @@
 interface Config {
-    apiUrl: string;
-    port: number;
-    websocketUrl: string;
+  apiUrl: string
+  port: number
+  websocketUrl: string
 }
 
-export const config: Config;
+export const config: Config

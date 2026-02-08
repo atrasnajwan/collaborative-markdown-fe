@@ -1,59 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { useAuth } from '../contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 const Auth: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-  });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { login, register, user, isLoading: isAuthLoading } = useAuth();
-  const navigate = useNavigate();
+  })
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const { login, register, user, isLoading: isAuthLoading } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!isAuthLoading && user) {
-      navigate('/documents');
+      navigate('/documents')
     }
-  }, [user, isAuthLoading, navigate]);
+  }, [user, isAuthLoading, navigate])
 
   if (isAuthLoading || user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-primary">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-primary"></div>
       </div>
-    );
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
 
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
+        await login(formData.email, formData.password)
       } else {
-        await register(formData.name, formData.email, formData.password);
+        await register(formData.name, formData.email, formData.password)
         setIsLogin(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [e.target.id]: e.target.value
-    }));
-  };
+      [e.target.id]: e.target.value,
+    }))
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-bg-primary to-bg-secondary py-16 px-4">
@@ -67,7 +67,7 @@ const Auth: React.FC = () => {
           <h2 className="text-3xl font-bold text-center mb-8 text-text-primary">
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </h2>
-          
+
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm">
               {error}
@@ -77,7 +77,10 @@ const Auth: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {!isLogin && (
               <div>
-                <label htmlFor="name" className="block text-text-secondary mb-2">
+                <label
+                  htmlFor="name"
+                  className="block text-text-secondary mb-2"
+                >
                   Full Name
                 </label>
                 <input
@@ -91,7 +94,7 @@ const Auth: React.FC = () => {
                 />
               </div>
             )}
-            
+
             <div>
               <label htmlFor="email" className="block text-text-secondary mb-2">
                 Email Address
@@ -106,9 +109,12 @@ const Auth: React.FC = () => {
                 required
               />
             </div>
-            
+
             <div>
-              <label htmlFor="password" className="block text-text-secondary mb-2">
+              <label
+                htmlFor="password"
+                className="block text-text-secondary mb-2"
+              >
                 Password
               </label>
               <input
@@ -121,38 +127,42 @@ const Auth: React.FC = () => {
                 required
               />
             </div>
-            
+
             <button
               type="submit"
               disabled={isLoading}
               className={`w-full py-3 px-4 bg-accent-primary text-bg-primary rounded-md font-medium transition-all duration-200 shadow-lg
-                ${isLoading 
-                  ? 'opacity-70 cursor-not-allowed'
-                  : 'hover:bg-accent-secondary hover:shadow-accent-primary/20'
+                ${
+                  isLoading
+                    ? 'opacity-70 cursor-not-allowed'
+                    : 'hover:bg-accent-secondary hover:shadow-accent-primary/20'
                 }`}
             >
-              {isLoading 
-                ? 'Please wait...' 
-                : (isLogin ? 'Sign In' : 'Create Account')
-              }
+              {isLoading
+                ? 'Please wait...'
+                : isLogin
+                  ? 'Sign In'
+                  : 'Create Account'}
             </button>
           </form>
-          
+
           <div className="mt-6 text-center">
             <button
               onClick={() => {
-                setIsLogin(!isLogin);
-                setError('');
+                setIsLogin(!isLogin)
+                setError('')
               }}
               className="text-text-secondary hover:text-accent-primary transition-colors"
             >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              {isLogin
+                ? "Don't have an account? Sign up"
+                : 'Already have an account? Sign in'}
             </button>
           </div>
         </motion.div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Auth; 
+export default Auth

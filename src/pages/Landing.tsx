@@ -1,10 +1,10 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import Chip from '@mui/material/Chip';
+import React from 'react'
+import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import Chip from '@mui/material/Chip'
 
 const Landing: React.FC = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-bg-primary to-bg-secondary">
@@ -17,7 +17,7 @@ const Landing: React.FC = () => {
         >
           Collaborative Markdown Editor
         </motion.h1>
-        
+
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -26,7 +26,7 @@ const Landing: React.FC = () => {
         >
           Edit and collaborate on markdown documents in real-time with your team
         </motion.p>
-        
+
         <motion.button
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -48,8 +48,13 @@ const Landing: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="bg-card-bg p-8 rounded-xl shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-300"
           >
-            <h3 className="text-2xl font-bold text-accent-primary mb-4">Real-time Collaboration</h3>
-            <p className="text-text-secondary">Work together with your team in real-time, seeing changes as they happen.</p>
+            <h3 className="text-2xl font-bold text-accent-primary mb-4">
+              Real-time Collaboration
+            </h3>
+            <p className="text-text-secondary">
+              Work together with your team in real-time, seeing changes as they
+              happen.
+            </p>
           </motion.div>
 
           <motion.div
@@ -58,8 +63,12 @@ const Landing: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.8 }}
             className="bg-card-bg p-8 rounded-xl shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-300"
           >
-            <h3 className="text-2xl font-bold text-accent-primary mb-4">Markdown Support</h3>
-            <p className="text-text-secondary">Write in Markdown with instant preview and formatting tools.</p>
+            <h3 className="text-2xl font-bold text-accent-primary mb-4">
+              Markdown Support
+            </h3>
+            <p className="text-text-secondary">
+              Write in Markdown with instant preview and formatting tools.
+            </p>
           </motion.div>
 
           <motion.div
@@ -68,13 +77,18 @@ const Landing: React.FC = () => {
             transition={{ duration: 0.8, delay: 1 }}
             className="bg-card-bg p-8 rounded-xl shadow-lg border border-accent-primary/10 hover:border-accent-primary/30 transition-all duration-300"
           >
-            <h3 className="text-2xl font-bold text-accent-primary mb-4">Version History<Chip color="info" label="Coming Soon"/></h3>
-            <p className="text-text-secondary">Track changes and revert to previous versions at any time.</p>
+            <h3 className="text-2xl font-bold text-accent-primary mb-4">
+              Version History
+              <Chip color="info" label="Coming Soon" />
+            </h3>
+            <p className="text-text-secondary">
+              Track changes and revert to previous versions at any time.
+            </p>
           </motion.div>
         </div>
       </section>
     </div>
-  );
-};
+  )
+}
 
-export default Landing; 
+export default Landing
