@@ -29,6 +29,8 @@ export interface Document {
   created_at: string
   updated_at: string
   role: UserRole
+  owner_name: string
+  owner_id: number
 }
 
 export interface PaginationMeta {

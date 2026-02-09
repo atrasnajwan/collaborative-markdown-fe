@@ -2,19 +2,40 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { api, Document } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import {
+  Box,
+  Container,
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  IconButton,
+  Menu,
+  MenuItem,
+  CircularProgress,
+  Fab,
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Alert,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material'
+import MenuIcon from '@mui/icons-material/Menu'
+import CloseIcon from '@mui/icons-material/Close'
+import AccountCircleIcon from '@mui/icons-material/AccountCircle'
+import SourceIcon from '@mui/icons-material/Source'
+import PeopleIcon from '@mui/icons-material/People'
+import AddIcon from '@mui/icons-material/Add'
+import LogoutIcon from '@mui/icons-material/Logout'
 
 import ShareDocumentModal from '../components/ShareDocumentModal'
 import CreateDocumentModal from '../components/CreateDocumentModal'
 import DocumentCard from '../components/DocumentCard'
 import DeleteDialog from '../components/DeleteDialog'
-import SourceIcon from '@mui/icons-material/Source'
-import PeopleIcon from '@mui/icons-material/People'
-import AccountCircleIcon from '@mui/icons-material/AccountCircle'
-import MenuIcon from '@mui/icons-material/Menu'
-import CloseIcon from '@mui/icons-material/Close'
-import AddIcon from '@mui/icons-material/Add'
-import IconButton from '@mui/material/IconButton'
-import { Box, Fab, useMediaQuery, useTheme } from '@mui/material'
 
 const Documents: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([])
@@ -26,23 +47,24 @@ const Documents: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const navigate = useNavigate()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
-  // view: 'my' | 'shared'
   const [view, setView] = useState<'my' | 'shared'>('my')
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   const [page, setPage] = useState<number>(1)
   const pageSize = 10
   const [hasMore, setHasMore] = useState<boolean>(true)
-  // infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const observerRef = useRef<IntersectionObserver | null>(null)
 
-  // reset when view changes
+  const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null)
+  const isProfileOpen = Boolean(profileAnchor)
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+  const isMenuOpen = Boolean(menuAnchor)
+
   useEffect(() => {
     setDocuments([])
     setPage(1)
@@ -73,11 +95,12 @@ const Documents: React.FC = () => {
         } else {
           setDocuments((prev) => [...prev, ...fetched])
         }
-        // if fewer items than pageSize, no more pages
+
         setHasMore(fetched.length === pageSize)
+        setPage(pageToFetch)
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Failed to load documents'
+          err instanceof Error ? err.message : 'Failed to fetch documents'
         )
       } finally {
         setIsLoading(false)
@@ -88,43 +111,33 @@ const Documents: React.FC = () => {
   )
 
   useEffect(() => {
-    fetchDocuments(view, page)
-  }, [fetchDocuments, page, view])
+    fetchDocuments(view, 1)
+  }, [view, fetchDocuments])
 
-  // intersection observer to trigger loading next page
   useEffect(() => {
-    if (!sentinelRef.current) return
-    if (!hasMore) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          fetchDocuments(view, page + 1)
+        }
+      },
+      { threshold: 0.1 }
+    )
 
-    const options = {
-      root: null,
-      rootMargin: '200px',
-      threshold: 0,
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current)
     }
-
-    observerRef.current?.disconnect()
-    observerRef.current = new IntersectionObserver((entries) => {
-      const first = entries[0]
-      if (first.isIntersecting && !isLoadingMore && !isLoading) {
-        setPage((prev) => prev + 1)
-      }
-    }, options)
-
-    observerRef.current.observe(sentinelRef.current)
 
     return () => {
-      observerRef.current?.disconnect()
+      observer.disconnect()
     }
-  }, [hasMore, isLoadingMore, isLoading])
+  }, [hasMore, isLoadingMore, isLoading, view, page, fetchDocuments])
 
   const handleCreateDocument = async (e: React.FormEvent, title: string) => {
     e.preventDefault()
-
     try {
       const newDocument = await api.createDocument(title)
-      // switch to my documents so user sees it
       if (view === 'shared') setView('my')
-
       setDocuments((prev) => [newDocument, ...prev])
       setIsCreateModalOpen(false)
     } catch (err) {
@@ -136,303 +149,328 @@ const Documents: React.FC = () => {
     navigate(`/documents/${id}/edit`)
   }
 
-  const [anchorEl, setAnchorEl] = useState<any>(null)
-  const open = Boolean(anchorEl)
-
-  const handleOpenMenu = (event: any, doc: Document) => {
-    event.stopPropagation() // Prevents card's onClick
-    setAnchorEl(event.currentTarget)
+  const handleOpenMenu = (
+    event: React.MouseEvent<HTMLElement>,
+    doc: Document
+  ) => {
+    event.stopPropagation()
+    setMenuAnchor(event.currentTarget)
     setSelectedDocument(doc)
   }
 
-  const handleCloseMenu = (event: any) => {
-    if (event) event.stopPropagation()
-    setAnchorEl(null)
+  const handleCloseMenu = () => {
+    setMenuAnchor(null)
   }
 
-  const handleShare = (event: any) => {
-    event.stopPropagation()
+  const handleShare = async (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation()
     setIsShareModalOpen(true)
+    handleCloseMenu()
   }
 
-  const handleDelete = (event: any) => {
-    event.stopPropagation()
+  const handleDelete = async (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation()
     setIsDeleteModalOpen(true)
+    handleCloseMenu()
   }
 
   const handleConfirmDelete = async () => {
     if (!selectedDocument) return
     setIsDeleteLoading(true)
     try {
-      await api.removeDocument(selectedDocument.id)
-      const newDocuments = documents.filter(
-        (doc) => doc.id !== selectedDocument.id
-      )
-      setDocuments(newDocuments)
-      setSelectedDocument(undefined)
-      setAnchorEl(null)
-    } catch (err) {
-      console.log(err)
-    } finally {
+      await api.deleteDocument(selectedDocument.id)
+      setDocuments((prev) => prev.filter((d) => d.id !== selectedDocument.id))
       setIsDeleteModalOpen(false)
+      setSelectedDocument(undefined)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete document')
+    } finally {
       setIsDeleteLoading(false)
     }
   }
 
-  // profile menu
-  const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null)
-  const isProfileOpen = Boolean(profileAnchor)
-  const profileMenuRef = useRef<HTMLDivElement | null>(null)
-
   const handleOpenProfile = (e: React.MouseEvent<HTMLElement>) => {
-    // toggle on repeated clicks
     setProfileAnchor((prev) => (prev ? null : e.currentTarget))
   }
-  const handleCloseProfile = () => setProfileAnchor(null)
 
-  // close profile menu when clicking outside or pressing Escape
-  useEffect(() => {
-    if (!isProfileOpen) return
-    const onDown = (ev: MouseEvent) => {
-      const target = ev.target as Node
-      if (profileMenuRef.current?.contains(target)) return
-      if (profileAnchor?.contains(target)) return
-      setProfileAnchor(null)
-    }
-    const onKey = (ev: KeyboardEvent) => {
-      if (ev.key === 'Escape') setProfileAnchor(null)
-    }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [isProfileOpen, profileAnchor])
+  const handleCloseProfile = () => {
+    setProfileAnchor(null)
+  }
 
   if (isLoading && page === 1) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-primary"></div>
-      </div>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'background.default',
+        }}
+      >
+        <CircularProgress />
+      </Box>
     )
   }
 
+  const drawerContent = (
+    <Box sx={{ width: 280, p: 2 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 2,
+        }}
+      >
+        <Typography variant="h6">Menu</Typography>
+        <IconButton onClick={() => setMobileDrawerOpen(false)} size="small">
+          <CloseIcon />
+        </IconButton>
+      </Box>
+      <Divider sx={{ my: 2 }} />
+      <List>
+        <ListItemButton
+          selected={view === 'my'}
+          onClick={() => {
+            setView('my')
+            setMobileDrawerOpen(false)
+          }}
+        >
+          <ListItemIcon>
+            <SourceIcon />
+          </ListItemIcon>
+          <ListItemText primary="My Documents" />
+        </ListItemButton>
+        <ListItemButton
+          selected={view === 'shared'}
+          onClick={() => {
+            setView('shared')
+            setMobileDrawerOpen(false)
+          }}
+        >
+          <ListItemIcon>
+            <PeopleIcon />
+          </ListItemIcon>
+          <ListItemText primary="Shared with me" />
+        </ListItemButton>
+      </List>
+    </Box>
+  )
+
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <nav className="bg-card-bg shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-4">
-              {/* mobile: show menu button that opens sidebar */}
-              {isMobile && (
-                <IconButton
-                  onClick={() => setMobileSidebarOpen(true)}
-                  aria-label="Open menu"
-                >
-                  <MenuIcon />
-                </IconButton>
-              )}
-
-              <h1 className="text-xl font-bold text-text-primary">
-                {view === 'my' ? 'My Documents' : 'Shared with me'}
-              </h1>
-              {/* removed top links - links now only in sidebar */}
-            </div>
-            <div className="flex items-end">
-              <div className="relative">
-                <IconButton
-                  onClick={handleOpenProfile}
-                  size="medium"
-                  title="Profile"
-                  aria-haspopup="true"
-                  aria-expanded={isProfileOpen ? 'true' : undefined}
-                >
-                  <AccountCircleIcon fontSize="large" />
-                </IconButton>
-                {isProfileOpen && (
-                  <div
-                    ref={profileMenuRef}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
-                  >
-                    {/* TODO create profile edit */}
-                    {/* <button
-                      onClick={() => { handleCloseProfile(); navigate('/profile'); }}
-                      className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-gray-100"
-                    >
-                      Profile
-                    </button> */}
-                    <button
-                      onClick={() => {
-                        handleCloseProfile()
-                        logout()
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-gray-100"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* mobile sidebar overlay */}
-      {mobileSidebarOpen && (
-        <div className="sm:hidden fixed inset-0 z-50 flex">
-          <div className="w-64 bg-card-bg p-3 shadow h-full overflow-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Menu</h3>
-              <IconButton
-                onClick={() => setMobileSidebarOpen(false)}
-                aria-label="Close menu"
-              >
-                <CloseIcon />
-              </IconButton>
-            </div>
-            <nav>
-              <button
-                onClick={() => {
-                  setView('my')
-                  setMobileSidebarOpen(false)
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded ${view === 'my' ? 'bg-accent-primary/10 text-accent-primary' : 'text-text-secondary hover:bg-gray-50'}`}
-              >
-                <SourceIcon /> <span>My Documents</span>
-              </button>
-              <button
-                onClick={() => {
-                  setView('shared')
-                  setMobileSidebarOpen(false)
-                }}
-                className={`w-full flex items-center gap-3 mt-2 px-3 py-2 rounded ${view === 'shared' ? 'bg-accent-primary/10 text-accent-primary' : 'text-text-secondary hover:bg-gray-50'}`}
-              >
-                <PeopleIcon /> <span>Shared with me</span>
-              </button>
-            </nav>
-          </div>
-          <div className="flex-1" onClick={() => setMobileSidebarOpen(false)} />
-        </div>
-      )}
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 flex gap-6">
-        {/* Left column - small nav for desktop */}
-        <aside className="w-56 hidden sm:block">
-          <div className="flex items-center mb-3">
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="px-4 py-2 w-full rounded-md bg-accent-primary text-white hover:bg-accent-primary/90 transition-colors hidden sm:inline-block"
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+      }}
+    >
+      {/* Header */}
+      <AppBar position="static">
+        <Toolbar>
+          {isMobile && (
+            <IconButton
+              edge="start"
+              color="inherit"
+              onClick={() => setMobileDrawerOpen(true)}
+              sx={{ mr: 2 }}
             >
-              New
-            </button>
-          </div>
-          <div className="bg-card-bg p-3 rounded shadow">
-            <nav>
-              <button
-                onClick={() => setView('my')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded ${view === 'my' ? 'bg-accent-primary/10 text-accent-primary' : 'text-text-secondary hover:bg-gray-50'}`}
-              >
-                <SourceIcon /> <span>My Documents</span>
-              </button>
-              <button
-                onClick={() => setView('shared')}
-                className={`w-full flex items-center gap-3 mt-2 px-3 py-2 rounded ${view === 'shared' ? 'bg-accent-primary/10 text-accent-primary' : 'text-text-secondary hover:bg-gray-50'}`}
-              >
-                <PeopleIcon /> <span>Shared with me</span>
-              </button>
-            </nav>
-          </div>
-        </aside>
+              <MenuIcon />
+            </IconButton>
+          )}
+          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
+            {view === 'my' ? 'My Documents' : 'Shared with me'}
+          </Typography>
+          <IconButton
+            onClick={handleOpenProfile}
+            color="inherit"
+            title="Profile"
+            aria-haspopup="true"
+            aria-expanded={isProfileOpen ? 'true' : undefined}
+          >
+            <AccountCircleIcon />
+          </IconButton>
+          <Menu
+            anchorEl={profileAnchor}
+            open={isProfileOpen}
+            onClose={handleCloseProfile}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            <MenuItem
+              onClick={() => {
+                handleCloseProfile()
+                logout()
+              }}
+            >
+              <LogoutIcon sx={{ mr: 1 }} />
+              Logout
+            </MenuItem>
+          </Menu>
+        </Toolbar>
+      </AppBar>
 
-        <section className="flex-1">
+      {/* Mobile Drawer */}
+      <Drawer
+        anchor="left"
+        open={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+      >
+        {drawerContent}
+      </Drawer>
+
+      {/* Main Content */}
+      <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* Desktop Sidebar */}
+        {!isMobile && (
+          <Box
+            sx={{
+              width: 280,
+              p: 2,
+              borderRight: '1px solid',
+              borderColor: 'divider',
+              overflowY: 'auto',
+            }}
+          >
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={() => setIsCreateModalOpen(true)}
+              sx={{ mb: 2 }}
+            >
+              New Document
+            </Button>
+            <List>
+              <ListItemButton
+                selected={view === 'my'}
+                onClick={() => setView('my')}
+              >
+                <ListItemIcon>
+                  <SourceIcon />
+                </ListItemIcon>
+                <ListItemText primary="My Documents" />
+              </ListItemButton>
+              <ListItemButton
+                selected={view === 'shared'}
+                onClick={() => setView('shared')}
+              >
+                <ListItemIcon>
+                  <PeopleIcon />
+                </ListItemIcon>
+                <ListItemText primary="Shared with me" />
+              </ListItemButton>
+            </List>
+          </Box>
+        )}
+
+        {/* Main Content Area */}
+        <Container maxWidth="lg" sx={{ py: 4, flex: 1, overflowY: 'auto' }}>
           {error && (
-            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
               {error}
-            </div>
+            </Alert>
           )}
 
-          {documents.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-text-secondary text-lg">
+          {documents.length === 0 && !isLoading ? (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h5" color="text.secondary">
                 No documents yet. Create your first one!
-              </p>
-            </div>
+              </Typography>
+              {!isMobile && view === 'my' && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setIsCreateModalOpen(true)}
+                  sx={{ mt: 3 }}
+                >
+                  Create Document
+                </Button>
+              )}
+            </Box>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-2">
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    lg: 'repeat(3, 1fr)',
+                  },
+                  gap: 3,
+                }}
+              >
                 {documents.map((doc) => (
                   <DocumentCard
                     key={doc.id}
                     doc={doc}
+                    user={user}
                     onClick={toEditPage}
                     onClickMenu={handleOpenMenu}
                     onClickShare={handleShare}
                     onClickDelete={handleDelete}
-                    isMenuOpen={open}
+                    isMenuOpen={isMenuOpen}
                     onCloseMenu={handleCloseMenu}
-                    anchorEl={anchorEl}
+                    anchorEl={menuAnchor}
                   />
                 ))}
-              </div>
+              </Box>
 
-              {/* sentinel for infinite scroll */}
-              <div
+              {/* Infinite Scroll Sentinel */}
+              <Box
                 ref={sentinelRef}
-                className="h-8 flex items-center justify-center mt-6"
+                sx={{ py: 4, display: 'flex', justifyContent: 'center' }}
               >
-                {isLoadingMore && (
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent-primary"></div>
-                )}
-                {!hasMore && (
-                  <p className="text-center text-sm text-text-secondary">
+                {isLoadingMore && <CircularProgress size={32} />}
+                {!hasMore && documents.length > 0 && (
+                  <Typography color="text.secondary">
                     No more documents
-                  </p>
+                  </Typography>
                 )}
-              </div>
+              </Box>
             </>
           )}
-          {isMobile && view === 'my' && (
-            <Box
-              sx={{
-                position: 'fixed',
-                bottom: 16,
-                right: 16,
-              }}
-            >
-              <Fab color="primary" aria-label="add">
-                <AddIcon onClick={() => setIsCreateModalOpen(true)} />
-              </Fab>
-            </Box>
-          )}
-        </section>
-      </main>
+        </Container>
+      </Box>
 
-      {/* Create Document Modal */}
+      {/* Floating Action Button (Mobile) */}
+      {isMobile && view === 'my' && (
+        <Fab
+          color="primary"
+          aria-label="add"
+          onClick={() => setIsCreateModalOpen(true)}
+          sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        >
+          <AddIcon />
+        </Fab>
+      )}
+
+      {/* Modals */}
       <CreateDocumentModal
         open={isCreateModalOpen}
         handleCreateDocument={handleCreateDocument}
-        onClose={async () => setIsCreateModalOpen(false)}
+        onClose={() => setIsCreateModalOpen(false)}
       />
       {selectedDocument && (
         <>
           <ShareDocumentModal
             open={isShareModalOpen}
             onClose={() => setIsShareModalOpen(false)}
-            documentId={selectedDocument?.id}
+            documentId={selectedDocument.id}
           />
           <DeleteDialog
             open={isDeleteModalOpen}
-            description={`Do you really want to delete document ${selectedDocument.title}?`}
+            description={`Do you really want to delete document "${selectedDocument.title}"?`}
             onClose={() => setIsDeleteModalOpen(false)}
             loading={isDeleteLoading}
             onConfirm={handleConfirmDelete}
           />
         </>
       )}
-    </div>
+    </Box>
   )
 }
 

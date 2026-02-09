@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import {
+  Box,
+  Card,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  CircularProgress,
+  Container,
+} from '@mui/material'
 
 const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true)
@@ -23,9 +32,17 @@ const Auth: React.FC = () => {
 
   if (isAuthLoading || user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-primary"></div>
-      </div>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'background.default',
+        }}
+      >
+        <CircularProgress />
+      </Box>
     )
   }
 
@@ -40,6 +57,7 @@ const Auth: React.FC = () => {
       } else {
         await register(formData.name, formData.email, formData.password)
         setIsLogin(true)
+        setFormData({ name: '', email: '', password: '' })
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -56,112 +74,106 @@ const Auth: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-bg-primary to-bg-secondary py-16 px-4">
-      <div className="max-w-md mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-card-bg rounded-lg shadow-xl p-8 border border-accent-primary/10"
-        >
-          <h2 className="text-3xl font-bold text-center mb-8 text-text-primary">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: 'background.default',
+        py: 4,
+      }}
+    >
+      <Container maxWidth="sm">
+        <Card sx={{ p: 4 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{ mb: 3, textAlign: 'center' }}
+          >
             {isLogin ? 'Welcome Back' : 'Create Account'}
-          </h2>
+          </Typography>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm">
+            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
               {error}
-            </div>
+            </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <Box component="form" onSubmit={handleSubmit} sx={{ space: 2 }}>
             {!isLogin && (
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-text-secondary mb-2"
-                >
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-md bg-bg-secondary border border-accent-primary/20 text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
-                  placeholder="John Doe"
-                  required={!isLogin}
-                />
-              </div>
+              <TextField
+                fullWidth
+                id="name"
+                label="Full Name"
+                value={formData.name}
+                onChange={handleChange}
+                margin="normal"
+                placeholder="John Doe"
+                required
+                disabled={isLoading}
+              />
             )}
 
-            <div>
-              <label htmlFor="email" className="block text-text-secondary mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-bg-secondary border border-accent-primary/20 text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-text-secondary mb-2"
-              >
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-bg-secondary border border-accent-primary/20 text-text-primary focus:outline-none focus:border-accent-primary transition-colors"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
+            <TextField
+              fullWidth
+              id="email"
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              margin="normal"
+              placeholder="you@example.com"
+              required
               disabled={isLoading}
-              className={`w-full py-3 px-4 bg-accent-primary text-bg-primary rounded-md font-medium transition-all duration-200 shadow-lg
-                ${
-                  isLoading
-                    ? 'opacity-70 cursor-not-allowed'
-                    : 'hover:bg-accent-secondary hover:shadow-accent-primary/20'
-                }`}
+            />
+
+            <TextField
+              fullWidth
+              id="password"
+              label="Password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              margin="normal"
+              placeholder="••••••••"
+              required
+              disabled={isLoading}
+            />
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              sx={{ mt: 3, py: 1.5 }}
+              disabled={isLoading}
             >
               {isLoading
                 ? 'Please wait...'
                 : isLogin
                   ? 'Sign In'
                   : 'Create Account'}
-            </button>
-          </form>
+            </Button>
+          </Box>
 
-          <div className="mt-6 text-center">
-            <button
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Button
               onClick={() => {
                 setIsLogin(!isLogin)
                 setError('')
+                setFormData({ name: '', email: '', password: '' })
               }}
-              className="text-text-secondary hover:text-accent-primary transition-colors"
+              disabled={isLoading}
             >
               {isLogin
                 ? "Don't have an account? Sign up"
                 : 'Already have an account? Sign in'}
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </div>
+            </Button>
+          </Box>
+        </Card>
+      </Container>
+    </Box>
   )
 }
 
