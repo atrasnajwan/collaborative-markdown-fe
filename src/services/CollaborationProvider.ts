@@ -8,134 +8,93 @@ export interface CursorPosition {
   userName: string
 }
 
+export interface SelectionRange {
+  startLine: number
+  startColumn: number
+  endLine: number
+  endColumn: number
+}
+
 interface User {
   id: number
   name: string
   color?: string
 }
 
-interface WebsocketProviderOptions {
-  connect: boolean
-  params: {
-    token: string
-    // userName: string;
-  }
-}
-
-const MAX_RECONNECT = 3
-const RECONNECT_DELAY = 1000
+type OnSyncCallback = (state: boolean) => void
 
 export class CollaborationProvider {
   private doc: Y.Doc
   public provider: WebsocketProvider
   public text: Y.Text
-  private reconnectTimeout: NodeJS.Timeout | null = null
-  private maxReconnectAttempts = MAX_RECONNECT
-  private reconnectAttempts = 0
   private user: User
-  public synced: boolean
+  public synced: boolean = false
+  public onSyncReady: OnSyncCallback
 
   constructor(
     documentId: string,
     user: User,
-    onServerMessage: (e: any) => void
+    onMsg: (e: any) => void,
+    onSync: OnSyncCallback
   ) {
-    console.log('Provider Created')
     this.doc = new Y.Doc()
     this.user = user
-    const roomName = `doc-${documentId}`
+    this.onSyncReady = onSync
+
     const token = localStorage.getItem('auth_token')
-    const wsUrl = `${config.websocketUrl}`
-    this.synced = false
-
-    if (!token) {
-      throw new Error('Authentication token not found')
-    }
-
-    const providerOptions: WebsocketProviderOptions = {
-      connect: false,
-      params: {
-        token,
-        // userName: user.name,
-      },
-    }
-
     this.provider = new WebsocketProvider(
-      wsUrl,
-      roomName,
+      config.websocketUrl,
+      `doc-${documentId}`,
       this.doc,
-      providerOptions
+      { connect: false, params: { token: token || '' } }
     )
-    // "content" is only identifier
     this.text = this.doc.getText('content')
 
-    this.provider.on(
-      'status',
-      ({ status }: { status: 'connected' | 'disconnected' | 'connecting' }) => {
-        console.log('WebSocket status:', status)
-        if (status === 'connected') {
-          this.reconnectAttempts = 0
-          this.customMessageListener(onServerMessage)
-
-          // if (this.provider.synced) {
-          //   this.synced = true;
-          //   console.log("Reconnected and already synced.");
-          // }
-          // Wait a tiny bit for the handshake
-          setTimeout(() => {
-            this.synced = this.provider.synced
-            console.log(
-              '[YJS] Status connected, synced property is:',
-              this.synced
-            )
-          }, 100)
-        } else {
-          this.synced = false
-        }
-      }
-    )
-
-    this.provider.on('connection-error', (event: Event) => {
-      console.error('WebSocket connection error:', event)
-      this.handleDisconnection()
-    })
-
-    this.provider.on('sync', (state) => {
-      this.synced = state
-      console.log('SYNC:', state)
-    })
-
+    this.setupListeners(onMsg)
     this.provider.connect()
   }
 
-  private customMessageListener(onServerMessage: (e: any) => void) {
-    this.provider.ws?.addEventListener('message', (event) => {
-      if (typeof event.data !== 'string') return
+  private setupListeners(onMsg: (e: any) => void) {
+    this.provider.on('status', ({ status }: any) => {
+      console.log('WS status:', status)
 
-      try {
-        const msg = JSON.parse(event.data)
-        onServerMessage(msg)
-      } catch (err) {
-        console.log(err)
+      if (status === 'connected') {
+        this.provider.ws?.addEventListener('message', (e) =>
+          this.rawMsgHandler(e, onMsg)
+        )
+        this.synced = true
+        this.onSyncReady(true)
+      } else {
+        this.synced = false
+        this.onSyncReady(false)
       }
+    })
+
+    this.provider.on('sync', (isSynced: boolean) => {
+      console.log('sync:', isSynced)
+
+      this.synced = isSynced
+      this.onSyncReady(isSynced)
     })
   }
 
-  private handleDisconnection() {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout)
+  private rawMsgHandler(event: any, callback: (msg: any) => void) {
+    if (typeof event.data !== 'string') return
+    try {
+      callback(JSON.parse(event.data))
+    } catch (e) {
+      /* ignore binary Yjs packets */
     }
+  }
 
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++
-      console.log(
-        `Attempting to reconnect in ${RECONNECT_DELAY}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
-      )
-
-      this.reconnectTimeout = setTimeout(() => {
-        this.provider.connect()
-      }, RECONNECT_DELAY)
+  public destroy() {
+    this.provider.shouldConnect = false
+    if (this.provider.ws) {
+      this.provider.ws.close()
     }
+    this.provider.awareness.destroy()
+    this.provider.destroy()
+    this.doc.destroy()
   }
 
   public getText(): Y.Text {
@@ -150,11 +109,12 @@ export class CollaborationProvider {
     return this.provider.awareness
   }
 
-  sendCursorUpdate(cursor: CursorPosition) {
+  public sendCursorUpdate(cursor: CursorPosition, selection?: SelectionRange) {
     // Assign a color based on user id (simple hash or pick from array)
     const userColor = this.getUserColor()
     this.provider.awareness.setLocalState({
       cursor,
+      selection,
       user: {
         id: this.user.id,
         name: this.user.name,
@@ -174,19 +134,5 @@ export class CollaborationProvider {
     ]
     const idx = Math.abs(this.user.id) % colors.length
     return colors[idx]
-  }
-
-  public destroy() {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout)
-    }
-
-    this.provider.shouldConnect = false // tells the library to STOP RETRYING
-    if (this.provider.wsconnected) {
-      this.provider.disconnect()
-    }
-
-    this.provider.destroy()
-    this.doc.destroy()
   }
 }

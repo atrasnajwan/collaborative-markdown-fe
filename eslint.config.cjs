@@ -1,20 +1,20 @@
-const { defineConfig, globalIgnores } = require('eslint/config');
+const { defineConfig, globalIgnores } = require('eslint/config')
 
-const globals = require('globals');
+const globals = require('globals')
 
-const { fixupConfigRules } = require('@eslint/compat');
+const { fixupConfigRules } = require('@eslint/compat')
 
-const tsParser = require('@typescript-eslint/parser');
-const reactRefresh = require('eslint-plugin-react-refresh');
-const js = require('@eslint/js');
+const tsParser = require('@typescript-eslint/parser')
+const reactRefresh = require('eslint-plugin-react-refresh')
+const js = require('@eslint/js')
 
-const { FlatCompat } = require('@eslint/eslintrc');
+const { FlatCompat } = require('@eslint/eslintrc')
 
 const compat = new FlatCompat({
   baseDirectory: __dirname,
   recommendedConfig: js.configs.recommended,
   allConfig: js.configs.all,
-});
+})
 
 module.exports = defineConfig([
   {
@@ -43,7 +43,12 @@ module.exports = defineConfig([
       ...js.configs.recommended.rules,
       'react-refresh/only-export-components': 'off',
 
-      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+        },
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
 
       'prettier/prettier': [
@@ -55,4 +60,4 @@ module.exports = defineConfig([
     },
   },
   globalIgnores(['**/dist', '**/.eslintrc.cjs']),
-]);
+])

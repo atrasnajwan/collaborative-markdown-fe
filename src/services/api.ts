@@ -227,7 +227,7 @@ class ApiService {
     })
   }
 
-  async removeDocument(docId: number | string): Promise<void> {
+  async deleteDocument(docId: number | string): Promise<void> {
     return this.request<void>(`/documents/${docId}`, {
       method: 'DELETE',
     })
