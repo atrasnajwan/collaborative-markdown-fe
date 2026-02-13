@@ -57,7 +57,7 @@ const EditDocument: React.FC = () => {
       collaborationRef.current.destroy()
       collaborationRef.current = null
     }
-    showNotification(msg, 'info', false)
+    showNotification(msg, 'error', false)
     navigate(`/documents`)
   }
 
@@ -117,7 +117,7 @@ const EditDocument: React.FC = () => {
         setUserRole(doc.role)
 
         if (doc.role === UserRole.None) {
-          navigate('/documents')
+          handleKicked("You don't have access to this document!")
           return
         }
 
@@ -201,7 +201,7 @@ const EditDocument: React.FC = () => {
   // binding when synced
   useEffect(() => {
     if (!synced || !isEditorReady) return
-    bindMonaco('useeffect')
+    bindMonaco()
   }, [synced, isEditorReady])
 
   const handleEditorDidMount = (editor: any) => {
