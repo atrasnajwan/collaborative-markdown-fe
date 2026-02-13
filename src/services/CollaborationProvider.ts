@@ -64,9 +64,11 @@ export class CollaborationProvider {
         )
         this.synced = true
         this.onSyncReady(true)
+        console.log('onSyncReady', true)
       } else {
         this.synced = false
         this.onSyncReady(false)
+        console.log('onSyncReady', false)
       }
     })
 
@@ -75,6 +77,7 @@ export class CollaborationProvider {
 
       this.synced = isSynced
       this.onSyncReady(isSynced)
+      console.log('onSyncReady', isSynced)
     })
   }
 

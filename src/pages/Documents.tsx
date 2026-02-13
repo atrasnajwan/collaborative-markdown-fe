@@ -20,7 +20,6 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  Alert,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
@@ -36,6 +35,7 @@ import ShareDocumentModal from '../components/ShareDocumentModal'
 import CreateDocumentModal from '../components/CreateDocumentModal'
 import DocumentCard from '../components/DocumentCard'
 import DeleteDialog from '../components/DeleteDialog'
+import { useNotification } from '../contexts/NotificationContext'
 
 const Documents: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([])
@@ -43,13 +43,13 @@ const Documents: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isDeleteLoading, setIsDeleteLoading] = useState(false)
-  const [error, setError] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const { logout, user } = useAuth()
   const navigate = useNavigate()
   const theme = useTheme()
+  const { showNotification } = useNotification()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const [view, setView] = useState<'my' | 'shared'>('my')
@@ -69,7 +69,6 @@ const Documents: React.FC = () => {
     setDocuments([])
     setPage(1)
     setHasMore(true)
-    setError('')
     setIsLoading(true)
   }, [view])
 
@@ -99,9 +98,7 @@ const Documents: React.FC = () => {
         setHasMore(fetched.length === pageSize)
         setPage(pageToFetch)
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to fetch documents'
-        )
+        showNotification(err, 'error')
       } finally {
         setIsLoading(false)
         setIsLoadingMore(false)
@@ -140,8 +137,9 @@ const Documents: React.FC = () => {
       if (view === 'shared') setView('my')
       setDocuments((prev) => [newDocument, ...prev])
       setIsCreateModalOpen(false)
+      showNotification('Successfully create new document', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create document')
+      showNotification(err, 'error')
     }
   }
 
@@ -158,9 +156,7 @@ const Documents: React.FC = () => {
     setSelectedDocument(doc)
   }
 
-  const handleCloseMenu = () => {
-    setMenuAnchor(null)
-  }
+  const handleCloseMenu = () => setMenuAnchor(null)
 
   const handleShare = async (e: React.MouseEvent<HTMLElement>) => {
     e.stopPropagation()
@@ -182,20 +178,18 @@ const Documents: React.FC = () => {
       setDocuments((prev) => prev.filter((d) => d.id !== selectedDocument.id))
       setIsDeleteModalOpen(false)
       setSelectedDocument(undefined)
+      showNotification('Succesfully delete document', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete document')
+      showNotification(err, 'error')
     } finally {
       setIsDeleteLoading(false)
     }
   }
 
-  const handleOpenProfile = (e: React.MouseEvent<HTMLElement>) => {
+  const handleOpenProfile = (e: React.MouseEvent<HTMLElement>) =>
     setProfileAnchor((prev) => (prev ? null : e.currentTarget))
-  }
 
-  const handleCloseProfile = () => {
-    setProfileAnchor(null)
-  }
+  const handleCloseProfile = () => setProfileAnchor(null)
 
   if (isLoading && page === 1) {
     return (
@@ -368,12 +362,6 @@ const Documents: React.FC = () => {
 
         {/* Main Content Area */}
         <Container maxWidth="lg" sx={{ py: 4, flex: 1, overflowY: 'auto' }}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
-              {error}
-            </Alert>
-          )}
-
           {documents.length === 0 && !isLoading ? (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="h5" color="text.secondary">
@@ -460,6 +448,7 @@ const Documents: React.FC = () => {
             open={isShareModalOpen}
             onClose={() => setIsShareModalOpen(false)}
             documentId={selectedDocument.id}
+            onNotification={showNotification}
           />
           <DeleteDialog
             open={isDeleteModalOpen}

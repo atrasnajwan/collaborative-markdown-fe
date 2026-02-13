@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  AlertColor,
   Button,
   CircularProgress,
   Dialog,
@@ -25,12 +26,15 @@ type ShareDocumentModalProps = {
   open: boolean
   onClose: () => void
   documentId: number
+  // eslint-disable-next-line no-unused-vars
+  onNotification: (message: any, severity?: AlertColor) => void
 }
 
 const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
   open,
   documentId,
   onClose,
+  onNotification,
 }) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<User[]>([])
@@ -54,7 +58,7 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
       .then((c) => {
         setCollaborators(c)
       })
-      .catch((err) => console.log(err))
+      .catch((err) => onNotification(err, 'error'))
   }, [documentId])
 
   useEffect(() => {
@@ -101,8 +105,9 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
         newRole
       )
       setCollaborators((prev) => [...prev, collaborator])
+      onNotification('Successfully add new collaborator', 'success')
     } catch (err) {
-      console.log(err)
+      onNotification(err, 'error')
     } finally {
       setLoading((prev) => ({ ...prev, add: false }))
     }
@@ -131,11 +136,12 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
           }
         })
         setCollaborators(newCollaborators)
+        onNotification('Role successfully changed', 'success')
       } catch (err) {
         setRole(
           (prev) => new Map([...prev, [userId, currUser.role as UserRole]])
         ) // rollback role
-        console.log(err)
+        onNotification(err, 'error')
       } finally {
         setLoading((prev) => ({ ...prev, change: false }))
       }
@@ -151,8 +157,9 @@ const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
         (collaborator) => collaborator.user.id !== userToDelete.user.id
       )
       setCollaborators(updatedItems)
+      onNotification('Successfully delete this user access', 'success')
     } catch (err) {
-      console.log(err)
+      onNotification(err, 'error')
     } finally {
       setDeleteConfirmOpen(false)
       setLoading((prev) => ({ ...prev, delete: false }))

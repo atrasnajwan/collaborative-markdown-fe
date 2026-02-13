@@ -24,6 +24,7 @@ import Editor from '@monaco-editor/react'
 import { CollaborationProvider } from '../services/CollaborationProvider'
 import { useAuth } from '../contexts/AuthContext'
 import { MonacoBinding } from 'y-monaco'
+import { useNotification } from '../contexts/NotificationContext'
 
 type AwarenessState = {
   line: number
@@ -36,6 +37,7 @@ const EditDocument: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { showNotification } = useNotification()
 
   const [markdown, setMarkdown] = useState<string>('')
   const [remoteCursors, setRemoteCursors] = useState<
@@ -44,6 +46,7 @@ const EditDocument: React.FC = () => {
   const [title, setTitle] = useState<string>('')
   const [userRole, setUserRole] = useState<string>('')
   const [synced, setSynced] = useState<boolean>(false)
+  const [isEditorReady, setIsEditorReady] = useState<boolean>(false)
 
   const collaborationRef = useRef<CollaborationProvider | null>(null)
   const editorRef = useRef<any>(null)
@@ -56,7 +59,7 @@ const EditDocument: React.FC = () => {
       collaborationRef.current.destroy()
       collaborationRef.current = null
     }
-    alert(msg)
+    showNotification(msg, 'info', false)
     navigate(`/documents`)
   }
 
@@ -64,7 +67,7 @@ const EditDocument: React.FC = () => {
     switch (msg.type) {
       case 'permission-changed':
         setUserRole(msg.role)
-        alert(`Your role is changed to ${msg.role}`)
+        showNotification(`Your role is changed to ${msg.role}`)
         break
 
       case 'kicked':
@@ -77,8 +80,19 @@ const EditDocument: React.FC = () => {
     }
   }
 
-  const bindMonaco = () => {
-    console.log('bindmonaco', synced)
+  const bindMonaco = (msg: string) => {
+    console.log(
+      'from:',
+      msg,
+      'isEditorReady',
+      isEditorReady,
+      'synced:',
+      synced,
+      'editorRef:',
+      Boolean(editorRef.current),
+      'collabRef:',
+      Boolean(collaborationRef.current)
+    )
     if (!synced) return
     if (!editorRef.current) return
     if (!collaborationRef.current) return
@@ -135,10 +149,10 @@ const EditDocument: React.FC = () => {
           (state) => {
             setSynced(state)
 
-            // Bind editor ONLY when synced
-            if (state && editorRef.current && !bindingRef.current) {
-              bindMonaco()
-            }
+            // // Bind editor ONLY when synced
+            // if (state && editorRef.current && !bindingRef.current) {
+            // bindMonaco()
+            // }
           }
         )
 
@@ -200,21 +214,21 @@ const EditDocument: React.FC = () => {
 
       collaborationRef.current = null
       setSynced(false)
+      console.log('clear main useEffect')
       setMarkdown('')
     }
   }, [id, user?.id])
 
   // binding when synced
   useEffect(() => {
-    if (!synced) return
-    bindMonaco()
-
-    console.log('Monaco bound AFTER sync')
-  }, [synced])
+    if (!synced || !isEditorReady) return
+    bindMonaco('useeffect')
+  }, [synced, isEditorReady])
 
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor
-
+    setIsEditorReady(true)
+    // bindMonaco('handleEditorDidMount')
     editor.onDidChangeCursorPosition(() => {
       const model = editor.getModel()
       const selection = editor.getSelection()
@@ -263,8 +277,10 @@ const EditDocument: React.FC = () => {
       newDecorations.push({
         range: new monaco.Range(data.line, data.column, data.line, data.column),
         options: {
-          className: `remote-cursor remote-cursor-color-${data.color.replace('#', '')}`,
-          beforeContentClassName: `remote-cursor-label remote-cursor-label-${data.color.replace('#', '')}`,
+          // className: `remote-cursor remote-cursor-color-${colorHex}`,
+          // beforeContentClassName: `remote-cursor-label remote-cursor-label-${colorHex}`,
+          beforeContentClassName: `remote-cursor remote-cursor-color-${colorHex}`,
+          afterContentClassName: `remote-cursor-label remote-cursor-label-${colorHex}`,
           hoverMessage: { value: data.name },
           // layering
           zIndex: 10,
@@ -287,6 +303,7 @@ const EditDocument: React.FC = () => {
           ),
           options: {
             className: `remote-selection remote-selection-color-${colorHex}`,
+            isWholeLine: false,
             zIndex: 5, // Keep selection behind the cursor
           },
         })
@@ -299,25 +316,25 @@ const EditDocument: React.FC = () => {
     )
   }, [remoteCursors])
 
-  // useEffect(() => {
-  //   return () => {
-  //     console.log('FIRED')
-  //     if (bindingRef.current) {
-  //       bindingRef.current.destroy()
-  //       bindingRef.current = null
-  //     }
+  useEffect(() => {
+    return () => {
+      console.log('FIRED')
+      if (bindingRef.current) {
+        bindingRef.current.destroy()
+        bindingRef.current = null
+      }
 
-  //     if (modelRef.current) {
-  //       modelRef.current.dispose()
-  //       modelRef.current = null
-  //     }
+      if (modelRef.current) {
+        modelRef.current.dispose()
+        modelRef.current = null
+      }
 
-  //     if (collaborationRef.current) {
-  //       collaborationRef.current.destroy()
-  //       collaborationRef.current = null
-  //     }
-  //   }
-  // }, [])
+      if (collaborationRef.current) {
+        collaborationRef.current.destroy()
+        collaborationRef.current = null
+      }
+    }
+  }, [])
 
   return (
     <Box
