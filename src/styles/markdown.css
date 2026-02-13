@@ -3,6 +3,14 @@
   color: #d4d4d4;
 }
 
+.markdown-preview .icon-link {
+  opacity: 0;
+  text-decoration: none;
+  color: #448aff;
+  margin-left: 8px;
+  transition: opacity 0.2s;
+}
+
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3,
@@ -23,6 +31,12 @@
 }
 .markdown-preview h3 {
   font-size: 1.25rem;
+}
+
+.markdown-preview h1:hover .icon-link, 
+.markdown-preview h2:hover .icon-link, 
+.markdown-preview h3:hover .icon-link {
+  opacity: 1;
 }
 
 .markdown-preview p {
@@ -130,40 +144,45 @@
   resize: none;
 }
 
-/* cursors */
-.remote-cursor {
-  border-left: 2px solid;
-  height: 1.2em !important;
-  margin-left: 0;
-  position: absolute;
-  z-index: 1000;
-  /* animation: blink 1s step-end infinite; */
-  width: 2px !important;
-  pointer-events: none;
-  background-color: inherit;
+.monaco-editor {
+    position: relative;
 }
 
-.remote-cursor-color-ff4081 {
-  border-left-color: #ff4081;
-  background-color: #ff4081;
+/* Base Styles */
+.remote-cursor {
+    position: absolute;
+    width: 2px !important;
+    height: 100%;
+    z-index: 10;
+    left: -2px;
 }
-.remote-cursor-color-448aff {
-  border-left-color: #448aff;
-  background-color: #448aff;
+
+.monaco-editor .view-overlays .remote-selection {
+    display: block !important;
 }
-.remote-cursor-color-ffd600 {
-  border-left-color: #ffd600;
-  background-color: #ffd600;
-}
-.remote-cursor-color-00e676 {
-  border-left-color: #00e676;
-  background-color: #00e676;
-}
-.remote-cursor-color-ff1744 {
-  border-left-color: #ff1744;
-  background-color: #ff1744;
-}
-.remote-cursor-color-651fff {
-  border-left-color: #651fff;
-  background-color: #651fff;
-}
+
+/* Color Mappings for your specific palette */
+/* Pink (#ff4081) */
+.remote-cursor-ff4081 { border-left: 2px solid #ff4081; }
+.remote-cursor-label-ff4081 { background-color: #ff4081; }
+.remote-selection-ff4081 { background-color: rgba(255, 64, 129, 0.3) !important; }
+
+/* Yellow (#ffd600) */
+.remote-cursor-ffd600 { border-left: 2px solid #ffd600; }
+.remote-cursor-label-ffd600 { background-color: #ffd600; }
+.remote-selection-ffd600 { background-color: rgba(255, 214, 0, 0.3) !important; }
+
+/* Green (#00e676) */
+.remote-cursor-00e676 { border-left: 2px solid #00e676; }
+.remote-cursor-label-00e676 { background-color: #00e676; }
+.remote-selection-00e676 { background-color: rgba(0, 230, 118, 0.3) !important; }
+
+/* Red (#ff1744) */
+.remote-cursor-ff1744 { border-left: 2px solid #ff1744; }
+.remote-cursor-label-ff1744 { background-color: #ff1744; }
+.remote-selection-ff1744 { background-color: rgba(255, 23, 68, 0.3) !important; }
+
+/* Purple (#651fff) */
+.remote-cursor-651fff { border-left: 2px solid #651fff; }
+.remote-cursor-label-651fff { background-color: #651fff; }
+.remote-selection-651fff { background-color: rgba(101, 31, 255, 0.3) !important; }

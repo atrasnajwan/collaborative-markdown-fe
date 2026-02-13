@@ -1,11 +1,11 @@
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { config } from '../config/env'
+import { User as UserApi } from '../services/api'
 
 export interface CursorPosition {
   line: number
   column: number
-  userName: string
 }
 
 export interface SelectionRange {
@@ -18,7 +18,13 @@ export interface SelectionRange {
 interface User {
   id: number
   name: string
-  color?: string
+  color: string
+}
+
+export interface AwarenessState {
+  cursor?: CursorPosition // Nullable in case of blur
+  uiSelection?: SelectionRange // Nullable in case of no selection
+  user: User
 }
 
 type OnSyncCallback = (state: boolean) => void
@@ -27,13 +33,13 @@ export class CollaborationProvider {
   private doc: Y.Doc
   public provider: WebsocketProvider
   public text: Y.Text
-  private user: User
+  private user: UserApi
   public synced: boolean = false
   public onSyncReady: OnSyncCallback
 
   constructor(
     documentId: string,
-    user: User,
+    user: UserApi,
     onMsg: (e: any) => void,
     onSync: OnSyncCallback
   ) {
@@ -64,11 +70,9 @@ export class CollaborationProvider {
         )
         this.synced = true
         this.onSyncReady(true)
-        console.log('onSyncReady', true)
       } else {
         this.synced = false
         this.onSyncReady(false)
-        console.log('onSyncReady', false)
       }
     })
 
@@ -77,7 +81,6 @@ export class CollaborationProvider {
 
       this.synced = isSynced
       this.onSyncReady(isSynced)
-      console.log('onSyncReady', isSynced)
     })
   }
 
@@ -117,7 +120,7 @@ export class CollaborationProvider {
     const userColor = this.getUserColor()
     this.provider.awareness.setLocalState({
       cursor,
-      selection,
+      uiSelection: selection, // avoid conflict with internal yjs
       user: {
         id: this.user.id,
         name: this.user.name,
@@ -127,14 +130,7 @@ export class CollaborationProvider {
   }
 
   private getUserColor(): string {
-    const colors = [
-      '#ff4081',
-      '#448aff',
-      '#ffd600',
-      '#00e676',
-      '#ff1744',
-      '#651fff',
-    ]
+    const colors = ['#ff4081', '#ffd600', '#00e676', '#ff1744', '#651fff']
     const idx = Math.abs(this.user.id) % colors.length
     return colors[idx]
   }

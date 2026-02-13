@@ -21,17 +21,15 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypeAddClasses from 'rehype-add-classes'
 import '../styles/markdown.css'
 import Editor from '@monaco-editor/react'
-import { CollaborationProvider } from '../services/CollaborationProvider'
+import {
+  AwarenessState,
+  CollaborationProvider,
+  CursorPosition,
+  SelectionRange,
+} from '../services/CollaborationProvider'
 import { useAuth } from '../contexts/AuthContext'
 import { MonacoBinding } from 'y-monaco'
 import { useNotification } from '../contexts/NotificationContext'
-
-type AwarenessState = {
-  line: number
-  column: number
-  color: string
-  name: string
-}
 
 const EditDocument: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -80,19 +78,7 @@ const EditDocument: React.FC = () => {
     }
   }
 
-  const bindMonaco = (msg: string) => {
-    console.log(
-      'from:',
-      msg,
-      'isEditorReady',
-      isEditorReady,
-      'synced:',
-      synced,
-      'editorRef:',
-      Boolean(editorRef.current),
-      'collabRef:',
-      Boolean(collaborationRef.current)
-    )
+  const bindMonaco = () => {
     if (!synced) return
     if (!editorRef.current) return
     if (!collaborationRef.current) return
@@ -100,7 +86,6 @@ const EditDocument: React.FC = () => {
       bindingRef.current.destroy()
       bindingRef.current = null
     }
-    console.log('run bindmonaco')
 
     const editor = editorRef.current
     const monaco = (window as any).monaco
@@ -146,14 +131,7 @@ const EditDocument: React.FC = () => {
           id,
           user,
           handleServerMessage,
-          (state) => {
-            setSynced(state)
-
-            // // Bind editor ONLY when synced
-            // if (state && editorRef.current && !bindingRef.current) {
-            // bindMonaco()
-            // }
-          }
+          (state) => setSynced(state)
         )
 
         collaborationRef.current = collab
@@ -168,7 +146,10 @@ const EditDocument: React.FC = () => {
 
         // Awareness observer
         awarenessObserver = () => {
-          const states = collab!.getAwareness().getStates()
+          const states = collab!.getAwareness().getStates() as Map<
+            number,
+            AwarenessState
+          >
           const cursors: any = {}
 
           states.forEach((state: any) => {
@@ -176,10 +157,9 @@ const EditDocument: React.FC = () => {
             if (!state.user || state.user.id === user.id) return
 
             cursors[state.user.id] = {
-              line: state.cursor?.line || 1,
-              column: state.cursor?.column || 1,
-              color: state.user.color || '#cccccc',
-              name: state.user.name || 'Anonymous',
+              cursor: state.cursor,
+              uiSelection: state.uiSelection,
+              user: state.user,
             }
           })
 
@@ -214,7 +194,6 @@ const EditDocument: React.FC = () => {
 
       collaborationRef.current = null
       setSynced(false)
-      console.log('clear main useEffect')
       setMarkdown('')
     }
   }, [id, user?.id])
@@ -228,21 +207,19 @@ const EditDocument: React.FC = () => {
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor
     setIsEditorReady(true)
-    // bindMonaco('handleEditorDidMount')
+
     editor.onDidChangeCursorPosition(() => {
       const model = editor.getModel()
       const selection = editor.getSelection()
       if (!model || !selection || !collaborationRef.current) return
 
-      // The cursor is the "active" end of the selection
-      const cursor = {
+      const cursor: CursorPosition = {
         line: selection.positionLineNumber,
         column: selection.positionColumn,
-        userName: user?.name || 'Anonymous',
       }
 
       // The selection is the full range (start to end)
-      const selectionRange = {
+      const selectionRange: SelectionRange = {
         startLine: selection.startLineNumber,
         startColumn: selection.startColumn,
         endLine: selection.endLineNumber,
@@ -270,43 +247,40 @@ const EditDocument: React.FC = () => {
     const newDecorations: any[] = []
 
     // eslint-disable-next-line no-unused-vars
-    Object.entries(remoteCursors).forEach(([_, data]: [string, any]) => {
-      const colorHex = data.color.replace('#', '')
+    Object.entries(remoteCursors).forEach(([clientId, state]) => {
+      const colorHex = state.user.color.replace('#', '')
 
-      // Draw the Cursor
-      newDecorations.push({
-        range: new monaco.Range(data.line, data.column, data.line, data.column),
-        options: {
-          // className: `remote-cursor remote-cursor-color-${colorHex}`,
-          // beforeContentClassName: `remote-cursor-label remote-cursor-label-${colorHex}`,
-          beforeContentClassName: `remote-cursor remote-cursor-color-${colorHex}`,
-          afterContentClassName: `remote-cursor-label remote-cursor-label-${colorHex}`,
-          hoverMessage: { value: data.name },
-          // layering
-          zIndex: 10,
-        },
-      })
-
-      // Draw the Selection (The background highlight)
-      // Only draw if start and end are different
-      if (
-        data.selection &&
-        (data.selection.startLine !== data.selection.endLine ||
-          data.selection.startColumn !== data.selection.endColumn)
-      ) {
+      // Cursor & Label Decoration
+      if (state.cursor) {
         newDecorations.push({
+          // collapsed range = no width
           range: new monaco.Range(
-            data.selection.startLine,
-            data.selection.startColumn,
-            data.selection.endLine,
-            data.selection.endColumn
+            state.cursor.line,
+            state.cursor.column,
+            state.cursor.line,
+            state.cursor.column
           ),
           options: {
-            className: `remote-selection remote-selection-color-${colorHex}`,
-            isWholeLine: false,
-            zIndex: 5, // Keep selection behind the cursor
+            className: `remote-cursor remote-cursor-${colorHex}`,
+            beforeContentClassName: `remote-cursor-label remote-cursor-label-${colorHex}`,
+            hoverMessage: { value: state.user.name },
+            showIfCollapsed: true,
           },
         })
+      }
+
+      // Selection Decoration
+      if (state.uiSelection) {
+        const { startLine, startColumn, endLine, endColumn } = state.uiSelection
+        if (startLine !== endLine || startColumn !== endColumn) {
+          newDecorations.push({
+            range: new monaco.Range(startLine, startColumn, endLine, endColumn),
+            options: {
+              className: `remote-selection remote-selection-${colorHex}`,
+              zIndex: 5,
+            },
+          })
+        }
       }
     })
 
@@ -318,7 +292,6 @@ const EditDocument: React.FC = () => {
 
   useEffect(() => {
     return () => {
-      console.log('FIRED')
       if (bindingRef.current) {
         bindingRef.current.destroy()
         bindingRef.current = null
@@ -375,8 +348,10 @@ const EditDocument: React.FC = () => {
 
               {/* Show Remote Collaborators */}
               {Object.entries(remoteCursors).map(([userId, cursor]) => (
-                <Tooltip key={userId} title={cursor.name}>
-                  <Avatar {...stringAvatar(cursor.name, cursor.color)} />
+                <Tooltip key={userId} title={cursor.user.name}>
+                  <Avatar
+                    {...stringAvatar(cursor.user.name, cursor.user.color)}
+                  />
                 </Tooltip>
               ))}
             </AvatarGroup>
