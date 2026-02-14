@@ -38,14 +38,6 @@ const CreateDocumentModal: React.FC<CreateDocumentModalProps> = ({
 
         <DialogContent>
           <form onSubmit={handleSubmit} id="create-form">
-            {/* <input
-                      type="text"
-                      value={title}
-                      onChange={handleOnChange}
-                      placeholder="Document title"
-                      className="w-full p-2 rounded-md bg-bg-primary border border-accent-primary/20 text-text-primary mb-4"
-                      disabled={isCreating}
-                    /> */}
             <TextField
               onChange={handleOnChange}
               autoFocus

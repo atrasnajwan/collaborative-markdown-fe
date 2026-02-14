@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { api, Document } from '../services/api'
+import { api, Document, UserRole } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -37,6 +37,11 @@ import DocumentCard from '../components/DocumentCard'
 import DeleteDialog from '../components/DeleteDialog'
 import { useNotification } from '../contexts/NotificationContext'
 
+enum ViewOption {
+  My,
+  Shared,
+}
+
 const Documents: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([])
   const [selectedDocument, setSelectedDocument] = useState<Document>()
@@ -52,7 +57,7 @@ const Documents: React.FC = () => {
   const { showNotification } = useNotification()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
-  const [view, setView] = useState<'my' | 'shared'>('my')
+  const [view, setView] = useState<ViewOption>(ViewOption.My)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   const [page, setPage] = useState<number>(1)
@@ -73,7 +78,7 @@ const Documents: React.FC = () => {
   }, [view])
 
   const fetchDocuments = useCallback(
-    async (which: 'my' | 'shared' = 'my', pageToFetch = 1) => {
+    async (which: ViewOption = ViewOption.My, pageToFetch = 1) => {
       if (pageToFetch === 1) {
         setIsLoading(true)
       } else {
@@ -81,7 +86,7 @@ const Documents: React.FC = () => {
       }
       try {
         const response =
-          which === 'shared'
+          which === ViewOption.Shared
             ? await api.getSharedDocuments({
                 page: pageToFetch,
                 per_page: pageSize,
@@ -134,7 +139,13 @@ const Documents: React.FC = () => {
     e.preventDefault()
     try {
       const newDocument = await api.createDocument(title)
-      if (view === 'shared') setView('my')
+      if (view === ViewOption.Shared) setView(ViewOption.My)
+      if (user) {
+        // add missing data
+        newDocument.owner_id = user.id
+        newDocument.owner_name = user.name
+        newDocument.role = UserRole.Owner
+      }
       setDocuments((prev) => [newDocument, ...prev])
       setIsCreateModalOpen(false)
       showNotification('Successfully create new document', 'success')
@@ -191,66 +202,12 @@ const Documents: React.FC = () => {
 
   const handleCloseProfile = () => setProfileAnchor(null)
 
-  if (isLoading && page === 1) {
-    return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: 'background.default',
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    )
+  const handleMenuItemClicked = (selectedView: ViewOption) => {
+    setView(selectedView)
+    setMobileDrawerOpen(false)
   }
 
-  const drawerContent = (
-    <Box sx={{ width: 280, p: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 2,
-        }}
-      >
-        <Typography variant="h6">Menu</Typography>
-        <IconButton onClick={() => setMobileDrawerOpen(false)} size="small">
-          <CloseIcon />
-        </IconButton>
-      </Box>
-      <Divider sx={{ my: 2 }} />
-      <List>
-        <ListItemButton
-          selected={view === 'my'}
-          onClick={() => {
-            setView('my')
-            setMobileDrawerOpen(false)
-          }}
-        >
-          <ListItemIcon>
-            <SourceIcon />
-          </ListItemIcon>
-          <ListItemText primary="My Documents" />
-        </ListItemButton>
-        <ListItemButton
-          selected={view === 'shared'}
-          onClick={() => {
-            setView('shared')
-            setMobileDrawerOpen(false)
-          }}
-        >
-          <ListItemIcon>
-            <PeopleIcon />
-          </ListItemIcon>
-          <ListItemText primary="Shared with me" />
-        </ListItemButton>
-      </List>
-    </Box>
-  )
+  const handleCloseDrawer = () => setMobileDrawerOpen(false)
 
   return (
     <Box
@@ -275,7 +232,7 @@ const Documents: React.FC = () => {
             </IconButton>
           )}
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            {view === 'my' ? 'My Documents' : 'Shared with me'}
+            {view === ViewOption.My ? 'My Documents' : 'Shared with me'}
           </Typography>
           <IconButton
             onClick={handleOpenProfile}
@@ -312,7 +269,11 @@ const Documents: React.FC = () => {
         open={mobileDrawerOpen}
         onClose={() => setMobileDrawerOpen(false)}
       >
-        {drawerContent}
+        <DrawerContent
+          currentView={view}
+          onClose={handleCloseDrawer}
+          onItemClick={handleMenuItemClicked}
+        />
       </Drawer>
 
       {/* Main Content */}
@@ -339,8 +300,8 @@ const Documents: React.FC = () => {
             </Button>
             <List>
               <ListItemButton
-                selected={view === 'my'}
-                onClick={() => setView('my')}
+                selected={view === ViewOption.My}
+                onClick={() => setView(ViewOption.My)}
               >
                 <ListItemIcon>
                   <SourceIcon />
@@ -348,8 +309,8 @@ const Documents: React.FC = () => {
                 <ListItemText primary="My Documents" />
               </ListItemButton>
               <ListItemButton
-                selected={view === 'shared'}
-                onClick={() => setView('shared')}
+                selected={view === ViewOption.Shared}
+                onClick={() => setView(ViewOption.Shared)}
               >
                 <ListItemIcon>
                   <PeopleIcon />
@@ -362,12 +323,25 @@ const Documents: React.FC = () => {
 
         {/* Main Content Area */}
         <Container maxWidth="lg" sx={{ py: 4, flex: 1, overflowY: 'auto' }}>
+          {isLoading && page === 1 && (
+            <Box
+              sx={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'background.default',
+              }}
+            >
+              <CircularProgress />
+            </Box>
+          )}
           {documents.length === 0 && !isLoading ? (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="h5" color="text.secondary">
                 No documents yet. Create your first one!
               </Typography>
-              {!isMobile && view === 'my' && (
+              {!isMobile && view === ViewOption.My && (
                 <Button
                   variant="contained"
                   color="primary"
@@ -425,7 +399,7 @@ const Documents: React.FC = () => {
       </Box>
 
       {/* Floating Action Button (Mobile) */}
-      {isMobile && view === 'my' && (
+      {isMobile && view === ViewOption.My && (
         <Fab
           color="primary"
           aria-label="add"
@@ -463,4 +437,51 @@ const Documents: React.FC = () => {
   )
 }
 
+interface DrawerContentProps {
+  currentView: ViewOption
+  onClose: () => void
+  onItemClick: (option: ViewOption) => void
+}
+const DrawerContent: React.FC<DrawerContentProps> = ({
+  currentView,
+  onClose,
+  onItemClick,
+}) => (
+  <Box sx={{ width: 280, p: 2 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 2,
+      }}
+    >
+      <Typography variant="h6">Menu</Typography>
+      <IconButton onClick={onClose} size="small">
+        <CloseIcon />
+      </IconButton>
+    </Box>
+    <Divider sx={{ my: 2 }} />
+    <List>
+      <ListItemButton
+        selected={currentView === ViewOption.My}
+        onClick={() => onItemClick(ViewOption.My)}
+      >
+        <ListItemIcon>
+          <SourceIcon />
+        </ListItemIcon>
+        <ListItemText primary="My Documents" />
+      </ListItemButton>
+      <ListItemButton
+        selected={currentView === ViewOption.Shared}
+        onClick={() => onItemClick(ViewOption.Shared)}
+      >
+        <ListItemIcon>
+          <PeopleIcon />
+        </ListItemIcon>
+        <ListItemText primary="Shared with me" />
+      </ListItemButton>
+    </List>
+  </Box>
+)
 export default Documents
