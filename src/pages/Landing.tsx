@@ -62,7 +62,7 @@ const Landing: React.FC = () => {
 
         {/* Features Grid */}
         <Grid container spacing={3} sx={{ mt: 4 }}>
-          <Grid item size={{ xs: 12, md: 6 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 p: 3,
@@ -94,7 +94,7 @@ const Landing: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item size={{ xs: 12, md: 6 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 p: 3,
@@ -125,7 +125,7 @@ const Landing: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item size={{ xs: 12, md: 6 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 p: 3,
@@ -157,7 +157,7 @@ const Landing: React.FC = () => {
             </Card>
           </Grid>
 
-          <Grid item size={{ xs: 12, md: 6 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 p: 3,

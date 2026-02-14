@@ -29,15 +29,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = api.getToken()
-      if (token) {
-        try {
-          const userData = await api.getCurrentUser()
-          setUser(userData)
-        } catch (error) {
-          console.error('Failed to restore session:', error)
-          api.clearToken()
-        }
+      try {
+        const userData = await api.getCurrentUser()
+        setUser(userData)
+      } catch (error) {
+        console.error('Failed to restore session:', error)
+        api.clearToken()
       }
       setIsLoading(false)
     }
@@ -67,11 +64,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = async () => {
     try {
       await api.logout()
-      setUser(null)
-      navigate('/')
     } catch (error) {
       console.error('Logout failed:', error)
-      // Still clear local state even if server logout fails
+    } finally {
       api.clearToken()
       setUser(null)
       navigate('/')

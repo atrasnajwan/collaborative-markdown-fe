@@ -1,7 +1,7 @@
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { config } from '../config/env'
-import { User as UserApi } from '../services/api'
+import { api, User as UserApi } from '../services/api'
 
 export interface CursorPosition {
   line: number
@@ -47,7 +47,7 @@ export class CollaborationProvider {
     this.user = user
     this.onSyncReady = onSync
 
-    const token = localStorage.getItem('auth_token')
+    const token = api.getToken()
     this.provider = new WebsocketProvider(
       config.websocketUrl,
       `doc-${documentId}`,

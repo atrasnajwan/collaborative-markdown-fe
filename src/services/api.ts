@@ -7,7 +7,7 @@ export interface User {
 }
 
 export interface LoginResponse {
-  token: string
+  access_token: string
   user: User
 }
 
@@ -52,31 +52,25 @@ export interface GetDocumentsParams {
 
 class ApiService {
   private token: string | null = null
-
-  constructor() {
-    this.token = localStorage?.getItem('auth_token') || null
-  }
+  private isRefreshing: boolean = false
+  private refreshPromise: Promise<string> | null = null
 
   setToken(token: string) {
     this.token = token
-    localStorage.setItem('auth_token', token)
   }
 
   getToken(): string | null {
-    if (!this.token) {
-      this.token = localStorage.getItem('auth_token')
-    }
     return this.token
   }
 
   clearToken() {
     this.token = null
-    localStorage.removeItem('auth_token')
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retry: boolean = true
   ): Promise<T> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -92,7 +86,22 @@ class ApiService {
         ...headers,
         ...options.headers,
       },
+      credentials: 'include', // important for refresh cookie
     })
+
+    if (response.status === 401 && retry && endpoint !== '/refresh') {
+      try {
+        const token = await this.refreshToken()
+        this.setToken(token)
+
+        // retry original request once
+        return this.request<T>(endpoint, options, false)
+      } catch (err) {
+        this.clearToken()
+        // window.location.href = '/'
+        throw err
+      }
+    }
 
     if (!response.ok) {
       const error = await response.json()
@@ -111,20 +120,42 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    this.setToken(response.token)
+    this.setToken(response.access_token)
     return response
   }
 
-  async register(
-    name: string,
-    email: string,
-    password: string
-  ): Promise<LoginResponse> {
-    const response = await this.request<LoginResponse>('/register', {
+  async refreshToken(): Promise<string> {
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise
+    }
+    this.isRefreshing = true
+    this.refreshPromise = new Promise(async (resolve, reject) => {
+      try {
+        const response = await fetch(`${config.apiUrl}/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+
+        if (!response.ok) {
+          throw new Error('Refresh failed')
+        }
+        const data = await response.json()
+        resolve(data.access_token)
+      } catch (err) {
+        reject(err)
+      } finally {
+        this.isRefreshing = false
+        this.refreshPromise = null
+      }
+    })
+    return this.refreshPromise
+  }
+
+  async register(name: string, email: string, password: string): Promise<User> {
+    const response = await this.request<User>('/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
     })
-    this.setToken(response.token)
     return response
   }
 

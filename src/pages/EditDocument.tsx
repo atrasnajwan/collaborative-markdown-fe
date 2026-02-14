@@ -247,7 +247,7 @@ const EditDocument: React.FC = () => {
     const newDecorations: any[] = []
 
     // eslint-disable-next-line no-unused-vars
-    Object.entries(remoteCursors).forEach(([clientId, state]) => {
+    Object.entries(remoteCursors).forEach(([_, state]) => {
       const colorHex = state.user.color.replace('#', '')
 
       // Cursor & Label Decoration

@@ -11,7 +11,7 @@ import React, { useState } from 'react'
 type CreateDocumentModalProps = {
   open: boolean
   handleCreateDocument: (e: React.FormEvent, title: string) => Promise<void>
-  onClose: () => {}
+  onClose: () => void
 }
 const CreateDocumentModal: React.FC<CreateDocumentModalProps> = ({
   open,

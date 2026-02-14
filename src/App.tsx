@@ -3,13 +3,13 @@ import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import Landing from './pages/Landing'
 import Auth from './pages/Auth'
-import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Documents from './pages/Documents'
 import EditDocument from './pages/EditDocument'
 import { darkTheme } from './config/theme'
 import './index.css'
 import { NotificationProvider } from './contexts/NotificationContext'
+import { AuthLayout } from './layout/AuthLayout'
 
 function App() {
   return (
@@ -17,9 +17,11 @@ function App() {
       <CssBaseline />
       <Router>
         <NotificationProvider>
-          <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Landing />} />
+          <Routes>
+            {/* public routes */}
+            <Route path="/" element={<Landing />} />
+            {/* protected layout */}
+            <Route element={<AuthLayout />}>
               <Route path="/auth" element={<Auth />} />
               <Route
                 path="/documents"
@@ -37,8 +39,8 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-            </Routes>
-          </AuthProvider>
+            </Route>
+          </Routes>
         </NotificationProvider>
       </Router>
     </ThemeProvider>

@@ -19,7 +19,7 @@ import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt'
 
 type DocumentCardProps = {
   doc: Document
-  user: User
+  user: User | null
   onClick: (id: number) => void
   onClickMenu: (e: React.MouseEvent<HTMLElement>, doc: Document) => void
   onClickShare: (e: React.MouseEvent<HTMLElement>) => void
@@ -110,9 +110,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                 >
                   Owner:
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {doc.owner_id === user.id ? 'Me' : doc.owner_name}
-                </Typography>
+                {user?.id && (
+                  <Typography variant="caption" color="text.secondary">
+                    {doc.owner_id === user.id ? 'Me' : doc.owner_name}
+                  </Typography>
+                )}
               </Box>
             )}
 

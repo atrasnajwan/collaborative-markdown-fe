@@ -1,8 +1,8 @@
-import React from 'react'
+import React from 'react';
 type CreateDocumentModalProps = {
-  open: boolean
-  handleCreateDocument: (e: React.FormEvent, title: string) => Promise<void>
-  onClose: () => {}
-}
-declare const CreateDocumentModal: React.FC<CreateDocumentModalProps>
-export default CreateDocumentModal
+    open: boolean;
+    handleCreateDocument: (e: React.FormEvent, title: string) => Promise<void>;
+    onClose: () => void;
+};
+declare const CreateDocumentModal: React.FC<CreateDocumentModalProps>;
+export default CreateDocumentModal;
