@@ -58,6 +58,13 @@ export class CollaborationProvider {
 
     this.setupListeners(onMsg)
     this.provider.connect()
+
+    // set user metadata
+    this.provider.awareness.setLocalStateField('user', {
+      id: this.user.id,
+      name: this.user.name,
+      color: this.getUserColor(), // Assign a color based on user id (simple hash or pick from array)
+    })
   }
 
   private setupListeners(onMsg: (e: any) => void) {
@@ -116,17 +123,9 @@ export class CollaborationProvider {
   }
 
   public sendCursorUpdate(cursor: CursorPosition, selection?: SelectionRange) {
-    // Assign a color based on user id (simple hash or pick from array)
-    const userColor = this.getUserColor()
-    this.provider.awareness.setLocalState({
-      cursor,
-      uiSelection: selection, // avoid conflict with internal yjs
-      user: {
-        id: this.user.id,
-        name: this.user.name,
-        color: userColor,
-      },
-    })
+    // only send moving parts
+    this.provider.awareness.setLocalStateField('cursor', cursor)
+    this.provider.awareness.setLocalStateField('uiSelection', selection)
   }
 
   private getUserColor(): string {

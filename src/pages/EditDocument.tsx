@@ -51,6 +51,8 @@ const EditDocument: React.FC = () => {
   const bindingRef = useRef<MonacoBinding | null>(null)
   const modelRef = useRef<any>(null)
   const decorationIdsRef = useRef<string[]>([])
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const throttledCursorSyncRef = useRef<((editor: any) => void) | null>(null)
 
   const handleKicked = (msg: string) => {
     if (collaborationRef.current) {
@@ -139,7 +141,16 @@ const EditDocument: React.FC = () => {
         // Observe Yjs text
         yObserver = () => {
           if (!collab) return
-          setMarkdown(collab.getContent())
+
+          // Clear the previous timer if the user is still typing
+          if (previewTimerRef.current) {
+            clearTimeout(previewTimerRef.current)
+          }
+
+          previewTimerRef.current = setTimeout(() => {
+            setMarkdown(collab.getContent())
+            previewTimerRef.current = null
+          }, 300)
         }
 
         collab.text.observe(yObserver)
@@ -151,6 +162,7 @@ const EditDocument: React.FC = () => {
             AwarenessState
           >
           const cursors: any = {}
+          const hasChanged = false
 
           states.forEach((state: any) => {
             // skip self
@@ -163,7 +175,8 @@ const EditDocument: React.FC = () => {
             }
           })
 
-          setRemoteCursors(cursors)
+          // Only update state if we actually have remote data
+          if (hasChanged) setRemoteCursors(cursors)
         }
 
         collab.getAwareness().on('change', awarenessObserver)
@@ -175,22 +188,18 @@ const EditDocument: React.FC = () => {
     init()
 
     return () => {
-      if (collab && yObserver) {
-        collab.text.unobserve(yObserver)
-      }
+      if (collab && yObserver) collab.text.unobserve(yObserver)
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current)
 
-      if (collab && awarenessObserver) {
+      if (collab && awarenessObserver)
         collab.getAwareness().off('change', awarenessObserver)
-      }
 
       if (bindingRef.current) {
         bindingRef.current.destroy()
         bindingRef.current = null
       }
 
-      if (collab) {
-        collab.destroy()
-      }
+      if (collab) collab.destroy()
 
       collaborationRef.current = null
       setSynced(false)
@@ -204,21 +213,25 @@ const EditDocument: React.FC = () => {
     bindMonaco()
   }, [synced, isEditorReady])
 
-  const handleEditorDidMount = (editor: any) => {
-    editorRef.current = editor
-    setIsEditorReady(true)
+  useEffect(() => {
+    let lastRun = 0
 
-    editor.onDidChangeCursorPosition(() => {
-      const model = editor.getModel()
+    throttledCursorSyncRef.current = (editor: any) => {
+      const now = Date.now()
+
+      // 100ms
+      if (now - lastRun < 100) return
+
+      lastRun = now
+
       const selection = editor.getSelection()
-      if (!model || !selection || !collaborationRef.current) return
+      if (!selection || !collaborationRef.current) return
 
       const cursor: CursorPosition = {
         line: selection.positionLineNumber,
         column: selection.positionColumn,
       }
 
-      // The selection is the full range (start to end)
       const selectionRange: SelectionRange = {
         startLine: selection.startLineNumber,
         startColumn: selection.startColumn,
@@ -226,8 +239,18 @@ const EditDocument: React.FC = () => {
         endColumn: selection.endColumn,
       }
 
-      // send cursor position
       collaborationRef.current.sendCursorUpdate(cursor, selectionRange)
+    }
+  }, []) // Initialize once
+
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor
+    setIsEditorReady(true)
+
+    editor.onDidChangeCursorPosition(() => {
+      if (throttledCursorSyncRef.current) {
+        throttledCursorSyncRef.current(editor)
+      }
     })
   }
 
@@ -292,19 +315,9 @@ const EditDocument: React.FC = () => {
 
   useEffect(() => {
     return () => {
-      if (bindingRef.current) {
-        bindingRef.current.destroy()
-        bindingRef.current = null
-      }
-
       if (modelRef.current) {
         modelRef.current.dispose()
         modelRef.current = null
-      }
-
-      if (collaborationRef.current) {
-        collaborationRef.current.destroy()
-        collaborationRef.current = null
       }
     }
   }, [])
@@ -422,14 +435,26 @@ const EditDocument: React.FC = () => {
             onMount={handleEditorDidMount}
             theme="vs-dark"
             options={{
-              readOnly: !synced || userRole === UserRole.Viewer,
-              domReadOnly: !synced || userRole === UserRole.Viewer,
+              readOnly:
+                !isEditorReady || !synced || userRole === UserRole.Viewer,
+              domReadOnly:
+                !isEditorReady || !synced || userRole === UserRole.Viewer,
               minimap: { enabled: false },
               fontSize: 14,
               lineNumbers: 'on',
               wordWrap: 'on',
               wrappingIndent: 'same',
               automaticLayout: true,
+              hideCursorInOverviewRuler: true,
+              scrollbar: {
+                useShadows: false,
+                verticalHasArrows: false,
+                horizontalHasArrows: false,
+              },
+              // Prevents Monaco from re-scanning the whole doc for links while you type
+              links: false,
+              // Fast scrolling
+              fastScrollSensitivity: 7,
             }}
           />
         </Box>
