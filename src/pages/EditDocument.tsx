@@ -1,27 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
-import {
-  Box,
-  Typography,
-  AppBar,
-  Toolbar,
-  Avatar,
-  AvatarGroup,
-  Tooltip,
-  IconButton,
-} from '@mui/material'
-import { api, UserRole } from '../services/api'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypeAddClasses from 'rehype-add-classes'
 import '../styles/markdown.css'
 import Editor from '@monaco-editor/react'
+import { MonacoBinding } from 'y-monaco'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
+import Visibility from '@mui/icons-material/Visibility'
+import Box from '@mui/material/Box'
+import AppBar from '@mui/material/AppBar'
+import Toolbar from '@mui/material/Toolbar'
+import Typography from '@mui/material/Typography'
+import Tooltip from '@mui/material/Tooltip'
+import IconButton from '@mui/material/IconButton'
+import AvatarGroup from '@mui/material/AvatarGroup'
+import Avatar from '@mui/material/Avatar'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+
+import { useNotification } from '../contexts/NotificationContext'
+import { useAuth } from '../contexts/AuthContext'
+import { api, UserRole } from '../services/api'
 import {
   AwarenessState,
   CollaborationProvider,
@@ -29,10 +33,7 @@ import {
   SelectionRange,
   UserAwareness,
 } from '../services/CollaborationProvider'
-import { useAuth } from '../contexts/AuthContext'
-import { MonacoBinding } from 'y-monaco'
-import { useNotification } from '../contexts/NotificationContext'
-import { Visibility, VisibilityOff } from '@mui/icons-material'
+
 
 const EditDocument: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -68,7 +69,7 @@ const EditDocument: React.FC = () => {
     })
   }
 
-  // toogle preview using keyboard shortcut
+  // toogle preview using keyboard shortcut (ctrl + p)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {

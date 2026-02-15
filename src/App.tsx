@@ -5,11 +5,14 @@ import Landing from './pages/Landing'
 import Auth from './pages/Auth'
 import ProtectedRoute from './components/ProtectedRoute'
 import Documents from './pages/Documents'
-import EditDocument from './pages/EditDocument'
 import { darkTheme } from './config/theme'
 import './index.css'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { AuthLayout } from './layout/AuthLayout'
+import { lazy, Suspense } from 'react'
+import EditorSkeleton from './components/EditorSkeleton'
+
+const EditDocument = lazy(() => import('./pages/EditDocument'))
 
 function App() {
   return (
@@ -35,7 +38,9 @@ function App() {
                 path="/documents/:id/edit"
                 element={
                   <ProtectedRoute>
-                    <EditDocument />
+                    <Suspense fallback={<EditorSkeleton />}>
+                      <EditDocument />
+                    </Suspense>
                   </ProtectedRoute>
                 }
               />
