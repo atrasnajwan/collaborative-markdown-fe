@@ -1,7 +1,7 @@
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { config } from '../config/env'
-import { api, User as UserApi } from '../services/api'
+import { api, User } from '../services/api'
 
 export interface CursorPosition {
   line: number
@@ -15,7 +15,7 @@ export interface SelectionRange {
   endColumn: number
 }
 
-interface User {
+export interface UserAwareness {
   id: number
   name: string
   color: string
@@ -24,7 +24,7 @@ interface User {
 export interface AwarenessState {
   cursor?: CursorPosition // Nullable in case of blur
   uiSelection?: SelectionRange // Nullable in case of no selection
-  user: User
+  user: UserAwareness
 }
 
 type OnSyncCallback = (state: boolean) => void
@@ -33,13 +33,13 @@ export class CollaborationProvider {
   private doc: Y.Doc
   public provider: WebsocketProvider
   public text: Y.Text
-  private user: UserApi
+  private user: User
   public synced: boolean = false
   public onSyncReady: OnSyncCallback
 
   constructor(
     documentId: string,
-    user: UserApi,
+    user: User,
     onMsg: (e: any) => void,
     onSync: OnSyncCallback
   ) {

@@ -9,6 +9,7 @@ import {
   Avatar,
   AvatarGroup,
   Tooltip,
+  IconButton,
 } from '@mui/material'
 import { api, UserRole } from '../services/api'
 import remarkGfm from 'remark-gfm'
@@ -26,10 +27,12 @@ import {
   CollaborationProvider,
   CursorPosition,
   SelectionRange,
+  UserAwareness,
 } from '../services/CollaborationProvider'
 import { useAuth } from '../contexts/AuthContext'
 import { MonacoBinding } from 'y-monaco'
 import { useNotification } from '../contexts/NotificationContext'
+import { Visibility, VisibilityOff } from '@mui/icons-material'
 
 const EditDocument: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -38,13 +41,14 @@ const EditDocument: React.FC = () => {
   const { showNotification } = useNotification()
 
   const [markdown, setMarkdown] = useState<string>('')
-  const [remoteCursors, setRemoteCursors] = useState<
-    Record<number, AwarenessState>
+  const [collaborators, setCollaborators] = useState<
+    Record<number, UserAwareness>
   >({})
   const [title, setTitle] = useState<string>('')
   const [userRole, setUserRole] = useState<string>('')
   const [synced, setSynced] = useState<boolean>(false)
   const [isEditorReady, setIsEditorReady] = useState<boolean>(false)
+  const [showPreview, setShowPreview] = useState<boolean>(true)
 
   const collaborationRef = useRef<CollaborationProvider | null>(null)
   const editorRef = useRef<any>(null)
@@ -53,6 +57,20 @@ const EditDocument: React.FC = () => {
   const decorationIdsRef = useRef<string[]>([])
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const throttledCursorSyncRef = useRef<((editor: any) => void) | null>(null)
+
+  const togglePreview = () => setShowPreview((prev) => !prev)
+
+  // toogle preview using keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault()
+        togglePreview()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const handleKicked = (msg: string) => {
     if (collaborationRef.current) {
@@ -93,13 +111,16 @@ const EditDocument: React.FC = () => {
     const monaco = (window as any).monaco
     const yText = collaborationRef.current.getText()
 
-    const model = monaco.editor.createModel('', 'markdown')
-    modelRef.current = model
-    editor.setModel(model)
+    // only create once
+    if (!modelRef.current) {
+      const model = monaco.editor.createModel('', 'markdown')
+      modelRef.current = model
+    }
+    editor.setModel(modelRef.current)
 
     bindingRef.current = new MonacoBinding(
       yText,
-      model,
+      modelRef.current,
       new Set([editor]),
       collaborationRef.current.getAwareness()
     )
@@ -161,22 +182,74 @@ const EditDocument: React.FC = () => {
             number,
             AwarenessState
           >
-          const cursors: any = {}
-          const hasChanged = false
+          const newDecorations: any[] = []
+          if (!editorRef.current) return
+          const monaco =
+            (window as any).monaco ||
+            editorRef.current._standaloneKeybindingService?._monaco
+          if (!monaco) return
+
+          const remoteUsers: Record<number, UserAwareness> = {}
 
           states.forEach((state: any) => {
             // skip self
             if (!state.user || state.user.id === user.id) return
+            remoteUsers[state.user.id] = state.user
 
-            cursors[state.user.id] = {
-              cursor: state.cursor,
-              uiSelection: state.uiSelection,
-              user: state.user,
+            if (!state.cursor) return
+
+            // Remote Cursor Decorations
+            const colorHex = state.user.color.replace('#', '')
+            // Cursor & Label Decoration
+            if (state.cursor) {
+              newDecorations.push({
+                // collapsed range = no width
+                range: new monaco.Range(
+                  state.cursor.line,
+                  state.cursor.column,
+                  state.cursor.line,
+                  state.cursor.column
+                ),
+                options: {
+                  className: `remote-cursor remote-cursor-${colorHex}`,
+                  beforeContentClassName: `remote-cursor-label remote-cursor-label-${colorHex}`,
+                  hoverMessage: { value: state.user.name },
+                  showIfCollapsed: true,
+                },
+              })
+            }
+
+            // Selection Decoration
+            if (state.uiSelection) {
+              const { startLine, startColumn, endLine, endColumn } =
+                state.uiSelection
+              if (startLine !== endLine || startColumn !== endColumn) {
+                newDecorations.push({
+                  range: new monaco.Range(
+                    startLine,
+                    startColumn,
+                    endLine,
+                    endColumn
+                  ),
+                  options: {
+                    className: `remote-selection remote-selection-${colorHex}`,
+                    zIndex: 5,
+                  },
+                })
+              }
             }
           })
 
-          // Only update state if we actually have remote data
-          if (hasChanged) setRemoteCursors(cursors)
+          // Directly update Monaco without triggering a React re-render
+          if (editorRef.current) {
+            decorationIdsRef.current = editorRef.current.deltaDecorations(
+              decorationIdsRef.current,
+              newDecorations
+            )
+          }
+
+          // state for the AppBar Avatars
+          setCollaborators(remoteUsers)
         }
 
         collab.getAwareness().on('change', awarenessObserver)
@@ -254,65 +327,6 @@ const EditDocument: React.FC = () => {
     })
   }
 
-  // Remote Cursor Decorations
-  useEffect(() => {
-    const editor = editorRef.current
-    if (!editor || Object.keys(remoteCursors).length === 0) {
-      decorationIdsRef.current =
-        editor?.deltaDecorations(decorationIdsRef.current, []) || []
-      return
-    }
-
-    const monaco =
-      (window as any).monaco || editor._standaloneKeybindingService?._monaco
-    if (!monaco) return
-
-    const newDecorations: any[] = []
-
-    // eslint-disable-next-line no-unused-vars
-    Object.entries(remoteCursors).forEach(([_, state]) => {
-      const colorHex = state.user.color.replace('#', '')
-
-      // Cursor & Label Decoration
-      if (state.cursor) {
-        newDecorations.push({
-          // collapsed range = no width
-          range: new monaco.Range(
-            state.cursor.line,
-            state.cursor.column,
-            state.cursor.line,
-            state.cursor.column
-          ),
-          options: {
-            className: `remote-cursor remote-cursor-${colorHex}`,
-            beforeContentClassName: `remote-cursor-label remote-cursor-label-${colorHex}`,
-            hoverMessage: { value: state.user.name },
-            showIfCollapsed: true,
-          },
-        })
-      }
-
-      // Selection Decoration
-      if (state.uiSelection) {
-        const { startLine, startColumn, endLine, endColumn } = state.uiSelection
-        if (startLine !== endLine || startColumn !== endColumn) {
-          newDecorations.push({
-            range: new monaco.Range(startLine, startColumn, endLine, endColumn),
-            options: {
-              className: `remote-selection remote-selection-${colorHex}`,
-              zIndex: 5,
-            },
-          })
-        }
-      }
-    })
-
-    decorationIdsRef.current = editor.deltaDecorations(
-      decorationIdsRef.current,
-      newDecorations
-    )
-  }, [remoteCursors])
-
   useEffect(() => {
     return () => {
       if (modelRef.current) {
@@ -344,6 +358,18 @@ const EditDocument: React.FC = () => {
           <Typography variant="h6" sx={{ color: '#fff', fontWeight: 500 }}>
             {title || 'Untitled Document'}
           </Typography>
+          <Tooltip title="Toggle Preview (Ctrl+P)">
+            <IconButton
+              onClick={togglePreview}
+              sx={{
+                color: 'white',
+                ml: 1,
+                display: { xs: 'none', md: 'block' },
+              }}
+            >
+              {showPreview ? <VisibilityOff /> : <Visibility />}
+            </IconButton>
+          </Tooltip>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <AvatarGroup
@@ -360,10 +386,10 @@ const EditDocument: React.FC = () => {
               )}
 
               {/* Show Remote Collaborators */}
-              {Object.entries(remoteCursors).map(([userId, cursor]) => (
-                <Tooltip key={userId} title={cursor.user.name}>
+              {Object.entries(collaborators).map(([userId, collaborator]) => (
+                <Tooltip key={userId} title={collaborator.name}>
                   <Avatar
-                    {...stringAvatar(cursor.user.name, cursor.user.color)}
+                    {...stringAvatar(collaborator.name, collaborator.color)}
                   />
                 </Tooltip>
               ))}
@@ -425,8 +451,10 @@ const EditDocument: React.FC = () => {
           sx={{
             flex: 1,
             height: '100%',
-            borderRight: '1px solid rgba(255,255,255,0.1)',
-            position: 'relative',
+            width: showPreview ? '50%' : '100%',
+            borderRight: showPreview
+              ? '1px solid rgba(255,255,255,0.1)'
+              : 'none',
           }}
         >
           <Editor
@@ -460,59 +488,66 @@ const EditDocument: React.FC = () => {
         </Box>
 
         {/* Preview Section */}
-        <Box
-          sx={{
-            flex: 1,
-            height: '100%',
-            overflow: 'auto',
-            bgcolor: '#2d2d2d',
-          }}
-        >
-          <div className="markdown-preview">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[
-                rehypeRaw,
-                rehypeSanitize,
-                rehypeSlug,
-                [rehypeAddClasses, { 'h1,h2,h3,h4,h5,h6': 'heading-with-hr' }],
-                [
-                  rehypeAutolinkHeadings,
-                  {
-                    behavior: 'append', // Change 'wrap' to 'append' or 'prepend'
-                    content: {
-                      type: 'element',
-                      tagName: 'span',
-                      properties: { className: ['icon-link'] },
-                      children: [{ type: 'text', value: ' #' }], // Or use an SVG icon
+        {showPreview && (
+          <Box
+            sx={{
+              flex: 1,
+              width: '50%',
+              height: '100%',
+              overflow: 'auto',
+              bgcolor: '#2d2d2d',
+              display: { xs: 'none', md: 'block' },
+            }}
+          >
+            <div className="markdown-preview">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[
+                  rehypeRaw,
+                  rehypeSanitize,
+                  rehypeSlug,
+                  [
+                    rehypeAddClasses,
+                    { 'h1,h2,h3,h4,h5,h6': 'heading-with-hr' },
+                  ],
+                  [
+                    rehypeAutolinkHeadings,
+                    {
+                      behavior: 'append', // Change 'wrap' to 'append' or 'prepend'
+                      content: {
+                        type: 'element',
+                        tagName: 'span',
+                        properties: { className: ['icon-link'] },
+                        children: [{ type: 'text', value: ' #' }], // Or use an SVG icon
+                      },
                     },
+                  ],
+                ]}
+                components={{
+                  code: ({ className, children, ...props }: any) => {
+                    const match = /language-(\w+)/.exec(className || '')
+                    return className ? (
+                      <SyntaxHighlighter
+                        {...props}
+                        style={vscDarkPlus}
+                        language={match ? match[1] : ''}
+                        PreTag="div"
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    )
                   },
-                ],
-              ]}
-              components={{
-                code: ({ className, children, ...props }: any) => {
-                  const match = /language-(\w+)/.exec(className || '')
-                  return className ? (
-                    <SyntaxHighlighter
-                      {...props}
-                      style={vscDarkPlus}
-                      language={match ? match[1] : ''}
-                      PreTag="div"
-                    >
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>
-                  ) : (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  )
-                },
-              }}
-            >
-              {markdown}
-            </ReactMarkdown>
-          </div>
-        </Box>
+                }}
+              >
+                {markdown}
+              </ReactMarkdown>
+            </div>
+          </Box>
+        )}
       </Box>
     </Box>
   )
