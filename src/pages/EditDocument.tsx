@@ -58,7 +58,15 @@ const EditDocument: React.FC = () => {
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const throttledCursorSyncRef = useRef<((editor: any) => void) | null>(null)
 
-  const togglePreview = () => setShowPreview((prev) => !prev)
+  const togglePreview = () => {
+    setShowPreview((prev) => {
+      const nextState = !prev
+      if (nextState && collaborationRef.current) {
+        setMarkdown(collaborationRef.current.getContent())
+      }
+      return nextState
+    })
+  }
 
   // toogle preview using keyboard shortcut
   useEffect(() => {
@@ -161,15 +169,15 @@ const EditDocument: React.FC = () => {
 
         // Observe Yjs text
         yObserver = () => {
-          if (!collab) return
-
           // Clear the previous timer if the user is still typing
           if (previewTimerRef.current) {
             clearTimeout(previewTimerRef.current)
           }
 
           previewTimerRef.current = setTimeout(() => {
-            setMarkdown(collab.getContent())
+            if (collaborationRef.current) {
+              setMarkdown(collaborationRef.current.getContent())
+            }
             previewTimerRef.current = null
           }, 300)
         }
