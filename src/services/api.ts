@@ -99,7 +99,7 @@ class ApiService {
       } catch (err) {
         this.clearToken()
         // window.location.href = '/'
-        throw err
+        // throw err
       }
     }
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { api, User } from '../services/api'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 interface AuthContextType {
   user: User | null
@@ -26,14 +26,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
+  const location = useLocation()
+  const redirectTo: string = location.state?.redirectTo || ''
 
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         const userData = await api.getCurrentUser()
         setUser(userData)
-      } catch (error) {
-        console.error('Failed to restore session:', error)
+      } catch {
+        console.error('Failed to restore session:')
         api.clearToken()
       }
       setIsLoading(false)
@@ -46,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const response = await api.login(email, password)
       setUser(response.user)
+      if (redirectTo !== '') return navigate(redirectTo)
       // to documents page
       navigate('/documents')
     } catch (error) {
