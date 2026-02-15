@@ -48,7 +48,7 @@ const EditDocument: React.FC = () => {
   const [userRole, setUserRole] = useState<string>('')
   const [synced, setSynced] = useState<boolean>(false)
   const [isEditorReady, setIsEditorReady] = useState<boolean>(false)
-  const [showPreview, setShowPreview] = useState<boolean>(true)
+  const [showPreview, setShowPreview] = useState<boolean>(false)
 
   const collaborationRef = useRef<CollaborationProvider | null>(null)
   const editorRef = useRef<any>(null)
