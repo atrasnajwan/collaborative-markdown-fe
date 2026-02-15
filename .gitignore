@@ -30,3 +30,4 @@ dist-ssr
 
 # Keep example env file
 !.env.example
+tsconfig.tsbuildinfo

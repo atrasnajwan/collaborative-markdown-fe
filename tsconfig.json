@@ -8,13 +8,17 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "emitDeclarationOnly": false,
+    "emitDeclarationOnly": true,
     "jsx": "react-jsx",
     "declaration": true,
+    "incremental": true,
+    "noEmit": true,
     "outDir": "./dist",
     "rootDir": "./src",
+    "types": ["vite/client"],
 
     /* Linting */
     "strict": true,
@@ -22,7 +26,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "src/config/env.ts"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src"]
 }
