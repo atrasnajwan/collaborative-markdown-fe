@@ -1,4 +1,4 @@
-import * as Y from 'yjs'
+import { Doc as YDoc, Text as YText } from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { config } from '../config/env'
 import { api, User } from '../services/api'
@@ -30,9 +30,9 @@ export interface AwarenessState {
 type OnSyncCallback = (state: boolean) => void
 
 export class CollaborationProvider {
-  private doc: Y.Doc
+  private doc: YDoc
   public provider: WebsocketProvider
-  public text: Y.Text
+  public text: YText
   private user: User
   public synced: boolean = false
   public onSyncReady: OnSyncCallback
@@ -43,7 +43,7 @@ export class CollaborationProvider {
     onMsg: (e: any) => void,
     onSync: OnSyncCallback
   ) {
-    this.doc = new Y.Doc()
+    this.doc = new YDoc()
     this.user = user
     this.onSyncReady = onSync
 
@@ -110,7 +110,7 @@ export class CollaborationProvider {
     this.doc.destroy()
   }
 
-  public getText(): Y.Text {
+  public getText(): YText {
     return this.text
   }
 

@@ -8,8 +8,7 @@ import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypeAddClasses from 'rehype-add-classes'
 import '../styles/markdown.css'
-import Editor from '@monaco-editor/react'
-import { MonacoBinding } from 'y-monaco'
+import Editor, { loader } from '@monaco-editor/react'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import Visibility from '@mui/icons-material/Visibility'
 import Box from '@mui/material/Box'
@@ -34,6 +33,11 @@ import {
   UserAwareness,
 } from '../services/CollaborationProvider'
 
+loader.config({
+  paths: {
+    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs',
+  },
+})
 
 const EditDocument: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -41,6 +45,7 @@ const EditDocument: React.FC = () => {
   const navigate = useNavigate()
   const { showNotification } = useNotification()
 
+  const [monacoReady, setMonacoReady] = useState(false)
   const [markdown, setMarkdown] = useState<string>('')
   const [collaborators, setCollaborators] = useState<
     Record<number, UserAwareness>
@@ -53,11 +58,35 @@ const EditDocument: React.FC = () => {
 
   const collaborationRef = useRef<CollaborationProvider | null>(null)
   const editorRef = useRef<any>(null)
-  const bindingRef = useRef<MonacoBinding | null>(null)
+  const MonacoBindingRef = useRef<any>(null)
+  const bindingRef = useRef<any | null>(null)
   const modelRef = useRef<any>(null)
   const decorationIdsRef = useRef<string[]>([])
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const throttledCursorSyncRef = useRef<((editor: any) => void) | null>(null)
+
+  // load monaco from CDN for editor binding
+  useEffect(() => {
+    let cancelled = false
+
+    loader.config({
+      paths: {
+        vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs',
+      },
+    })
+
+    loader.init().then(async () => {
+      if (!cancelled) {
+        setMonacoReady(true)
+        const mon = await import('y-monaco')
+        MonacoBindingRef.current = mon.MonacoBinding
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const togglePreview = () => {
     setShowPreview((prev) => {
@@ -111,6 +140,7 @@ const EditDocument: React.FC = () => {
     if (!synced) return
     if (!editorRef.current) return
     if (!collaborationRef.current) return
+    if (!MonacoBindingRef.current) return
     if (bindingRef.current) {
       bindingRef.current.destroy()
       bindingRef.current = null
@@ -127,7 +157,7 @@ const EditDocument: React.FC = () => {
     }
     editor.setModel(modelRef.current)
 
-    bindingRef.current = new MonacoBinding(
+    bindingRef.current = new MonacoBindingRef.current(
       yText,
       modelRef.current,
       new Set([editor]),
@@ -291,9 +321,9 @@ const EditDocument: React.FC = () => {
 
   // binding when synced
   useEffect(() => {
-    if (!synced || !isEditorReady) return
+    if (!synced || !isEditorReady || !monacoReady) return
     bindMonaco()
-  }, [synced, isEditorReady])
+  }, [synced, isEditorReady, monacoReady])
 
   useEffect(() => {
     let lastRun = 0
@@ -466,34 +496,50 @@ const EditDocument: React.FC = () => {
               : 'none',
           }}
         >
-          <Editor
-            height="100%"
-            defaultLanguage="markdown"
-            onMount={handleEditorDidMount}
-            theme="vs-dark"
-            options={{
-              readOnly:
-                !isEditorReady || !synced || userRole === UserRole.Viewer,
-              domReadOnly:
-                !isEditorReady || !synced || userRole === UserRole.Viewer,
-              minimap: { enabled: false },
-              fontSize: 14,
-              lineNumbers: 'on',
-              wordWrap: 'on',
-              wrappingIndent: 'same',
-              automaticLayout: true,
-              hideCursorInOverviewRuler: true,
-              scrollbar: {
-                useShadows: false,
-                verticalHasArrows: false,
-                horizontalHasArrows: false,
-              },
-              // Prevents Monaco from re-scanning the whole doc for links while you type
-              links: false,
-              // Fast scrolling
-              fastScrollSensitivity: 7,
-            }}
-          />
+          {
+            monacoReady ? (
+              <Editor
+                height="100%"
+                defaultLanguage="markdown"
+                onMount={handleEditorDidMount}
+                theme="vs-dark"
+                options={{
+                  readOnly:
+                    !isEditorReady || !synced || userRole === UserRole.Viewer,
+                  domReadOnly:
+                    !isEditorReady || !synced || userRole === UserRole.Viewer,
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  wordWrap: 'on',
+                  wrappingIndent: 'same',
+                  automaticLayout: true,
+                  hideCursorInOverviewRuler: true,
+                  scrollbar: {
+                    useShadows: false,
+                    verticalHasArrows: false,
+                    horizontalHasArrows: false,
+                  },
+                  // Prevents Monaco from re-scanning the whole doc for links while you type
+                  links: false,
+                  // Fast scrolling
+                  fastScrollSensitivity: 7,
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                }}
+              >
+                Loading editor...
+              </Box>
+            )
+          }
         </Box>
 
         {/* Preview Section */}
