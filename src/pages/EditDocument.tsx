@@ -19,6 +19,8 @@ import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
 import AvatarGroup from '@mui/material/AvatarGroup'
 import Avatar from '@mui/material/Avatar'
+import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos'
+
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
@@ -123,15 +125,23 @@ const EditDocument: React.FC = () => {
     switch (msg.type) {
       case 'permission-changed':
         setUserRole(msg.role)
-        showNotification(`Your role is changed to ${msg.role}`)
+        showNotification(`Your role have been changed to ${msg.role}`)
         break
 
       case 'kicked':
-        handleKicked("You've been removed to access this document!")
+        handleKicked(`You've been removed to access this document! (${title})`)
         break
 
       case 'document-deleted':
-        handleKicked('This document has been deleted by the owner!')
+        handleKicked(`Document has been deleted by the owner!`)
+        break
+
+      case 'auth-error':
+        handleKicked(`Invalid authentication! Try refresh your browser`)
+        break
+
+      case 'no-access':
+        handleKicked(`You don't have access to this document!`)
         break
     }
   }
@@ -394,9 +404,19 @@ const EditDocument: React.FC = () => {
         }}
       >
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 500 }}>
-            {title || 'Untitled Document'}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Tooltip title="Back to Documents">
+              <IconButton
+                onClick={() => navigate('/documents')} // Adjust route path as needed
+                sx={{ color: 'white', ml: 0, mr: 1 }}
+              >
+                <ArrowBackIosIcon />
+              </IconButton>
+            </Tooltip>
+            <Typography variant="h6" sx={{ color: '#fff', fontWeight: 500 }}>
+              {title || 'Untitled Document'}
+            </Typography>
+          </Box>
           <Tooltip title="Toggle Preview (Ctrl+P)">
             <IconButton
               onClick={togglePreview}
@@ -496,50 +516,48 @@ const EditDocument: React.FC = () => {
               : 'none',
           }}
         >
-          {
-            monacoReady ? (
-              <Editor
-                height="100%"
-                defaultLanguage="markdown"
-                onMount={handleEditorDidMount}
-                theme="vs-dark"
-                options={{
-                  readOnly:
-                    !isEditorReady || !synced || userRole === UserRole.Viewer,
-                  domReadOnly:
-                    !isEditorReady || !synced || userRole === UserRole.Viewer,
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: 'on',
-                  wordWrap: 'on',
-                  wrappingIndent: 'same',
-                  automaticLayout: true,
-                  hideCursorInOverviewRuler: true,
-                  scrollbar: {
-                    useShadows: false,
-                    verticalHasArrows: false,
-                    horizontalHasArrows: false,
-                  },
-                  // Prevents Monaco from re-scanning the whole doc for links while you type
-                  links: false,
-                  // Fast scrolling
-                  fastScrollSensitivity: 7,
-                }}
-              />
-            ) : (
-              <Box
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                }}
-              >
-                Loading editor...
-              </Box>
-            )
-          }
+          {monacoReady ? (
+            <Editor
+              height="100%"
+              defaultLanguage="markdown"
+              onMount={handleEditorDidMount}
+              theme="vs-dark"
+              options={{
+                readOnly:
+                  !isEditorReady || !synced || userRole === UserRole.Viewer,
+                domReadOnly:
+                  !isEditorReady || !synced || userRole === UserRole.Viewer,
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: 'on',
+                wordWrap: 'on',
+                wrappingIndent: 'same',
+                automaticLayout: true,
+                hideCursorInOverviewRuler: true,
+                scrollbar: {
+                  useShadows: false,
+                  verticalHasArrows: false,
+                  horizontalHasArrows: false,
+                },
+                // Prevents Monaco from re-scanning the whole doc for links while you type
+                links: false,
+                // Fast scrolling
+                fastScrollSensitivity: 7,
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+              }}
+            >
+              Loading editor...
+            </Box>
+          )}
         </Box>
 
         {/* Preview Section */}

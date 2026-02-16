@@ -339,7 +339,9 @@ const Documents: React.FC = () => {
           {documents.length === 0 && !isLoading ? (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="h5" color="text.secondary">
-                No documents yet. Create your first one!
+                {view === ViewOption.My
+                  ? 'No documents yet. Create your first one!'
+                  : 'No documents shared to you'}
               </Typography>
               {!isMobile && view === ViewOption.My && (
                 <Button
