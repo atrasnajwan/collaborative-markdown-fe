@@ -31,11 +31,21 @@ type OnSyncCallback = (state: boolean) => void
 
 export class CollaborationProvider {
   private doc: YDoc
-  public provider: WebsocketProvider
+  public provider!: WebsocketProvider
   public text: YText
   private user: User
   public synced: boolean = false
   public onSyncReady: OnSyncCallback
+
+  private documentId: string
+  private onMsg: (e: any) => void
+
+  private hasEverSynced = false
+  private reconnectAttempts = 0
+  private syncWatchdog: any = null
+
+  private readonly MAX_RECONNECT_ATTEMPTS = 5
+  private readonly BASE_DELAY = 1000 // 1s
 
   constructor(
     documentId: string,
@@ -44,19 +54,28 @@ export class CollaborationProvider {
     onSync: OnSyncCallback
   ) {
     this.doc = new YDoc()
+    this.text = this.doc.getText('content')
+
     this.user = user
+    this.documentId = documentId
+    this.onMsg = onMsg
     this.onSyncReady = onSync
 
+    this.createProvider()
+  }
+
+  private createProvider() {
     const token = api.getToken()
+
     this.provider = new WebsocketProvider(
       config.websocketUrl,
-      `doc-${documentId}`,
+      `doc-${this.documentId}`,
       this.doc,
       { connect: false, params: { token: token || '' } }
     )
-    this.text = this.doc.getText('content')
 
-    this.setupListeners(onMsg)
+    this.setupListeners()
+
     this.provider.connect()
 
     // set user metadata
@@ -67,19 +86,41 @@ export class CollaborationProvider {
     })
   }
 
-  private setupListeners(onMsg: (e: any) => void) {
+  private recreateProvider() {
+    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+      console.error('Max reconnect attempts reached.')
+      return
+    }
+
+    this.reconnectAttempts++
+
+    const delay =
+      this.BASE_DELAY * Math.pow(2, this.reconnectAttempts - 1) +
+      Math.random() * 300 // jitter
+
+    console.warn(
+      `Recreating provider in ${delay}ms (attempt ${this.reconnectAttempts})`
+    )
+
+    setTimeout(() => {
+      this.provider.destroy()
+      this.createProvider()
+    }, delay)
+  }
+
+  private setupListeners() {
     this.provider.on('status', ({ status }: any) => {
       console.log('WS status:', status)
 
       if (status === 'connected') {
-        this.provider.ws?.addEventListener('message', (e) =>
-          this.rawMsgHandler(e, onMsg)
-        )
-        this.synced = true
-        this.onSyncReady(true)
+        this.synced = false
+        this.onSyncReady(false)
+
+        this.startSyncWatchdog()
       } else {
         this.synced = false
         this.onSyncReady(false)
+        this.clearWatchdog()
       }
     })
 
@@ -88,6 +129,16 @@ export class CollaborationProvider {
 
       this.synced = isSynced
       this.onSyncReady(isSynced)
+
+      if (isSynced) {
+        this.hasEverSynced = true
+        this.reconnectAttempts = 0
+        this.clearWatchdog()
+      }
+    })
+
+    this.provider.on('message', (event: any) => {
+      this.rawMsgHandler(event, this.onMsg)
     })
   }
 
@@ -95,17 +146,35 @@ export class CollaborationProvider {
     if (typeof event.data !== 'string') return
     try {
       callback(JSON.parse(event.data))
-    } catch (e) {
-      /* ignore binary Yjs packets */
+    } catch {
+      // ignore binary Yjs packets
     }
   }
 
-  public destroy() {
-    this.provider.shouldConnect = false
-    if (this.provider.ws) {
-      this.provider.ws.close()
+  private startSyncWatchdog() {
+    this.clearWatchdog()
+
+    const timeout = this.BASE_DELAY * Math.pow(2, this.reconnectAttempts)
+
+    this.syncWatchdog = setTimeout(() => {
+      if (!this.hasEverSynced) {
+        console.warn('Sync timeout. Forcing provider recreation.')
+        this.recreateProvider()
+      } else {
+        this.synced = true
+        this.onSyncReady(true)
+      }
+    }, timeout)
+  }
+
+  private clearWatchdog() {
+    if (this.syncWatchdog) {
+      clearTimeout(this.syncWatchdog)
+      this.syncWatchdog = null
     }
-    this.provider.awareness.destroy()
+  }
+  public destroy() {
+    this.clearWatchdog()
     this.provider.destroy()
     this.doc.destroy()
   }
