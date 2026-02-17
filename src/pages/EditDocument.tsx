@@ -64,7 +64,6 @@ const EditDocument: React.FC = () => {
   const bindingRef = useRef<any | null>(null)
   const modelRef = useRef<any>(null)
   const decorationIdsRef = useRef<string[]>([])
-  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const throttledCursorSyncRef = useRef<((editor: any) => void) | null>(null)
 
   // load monaco from CDN for editor binding
@@ -136,9 +135,9 @@ const EditDocument: React.FC = () => {
         handleKicked(`Document has been deleted by the owner!`)
         break
 
-      case 'auth-error':
-        handleKicked(`Invalid authentication! Try refresh your browser`)
-        break
+      // case 'auth-error':
+      //   handleKicked(`Invalid authentication! Try refresh your browser`)
+      //   break
 
       case 'no-access':
         handleKicked(`You don't have access to this document!`)
@@ -179,8 +178,6 @@ const EditDocument: React.FC = () => {
     if (!id || !user) return
 
     let collab: CollaborationProvider | null = null
-    let yObserver: (() => void) | null = null
-    let awarenessObserver: (() => void) | null = null
 
     const init = async () => {
       try {
@@ -199,40 +196,10 @@ const EditDocument: React.FC = () => {
           collaborationRef.current = null
         }
 
-        collab = new CollaborationProvider(
-          id,
-          user,
-          handleServerMessage,
-          (state) => setSynced(state)
-        )
-
-        collaborationRef.current = collab
-
-        // Observe Yjs text
-        yObserver = () => {
-          // Clear the previous timer if the user is still typing
-          if (previewTimerRef.current) {
-            clearTimeout(previewTimerRef.current)
-          }
-
-          previewTimerRef.current = setTimeout(() => {
-            if (collaborationRef.current) {
-              setMarkdown(collaborationRef.current.getContent())
-            }
-            previewTimerRef.current = null
-          }, 300)
-        }
-
-        collab.text.observe(yObserver)
-
-        // Awareness observer
-        awarenessObserver = () => {
-          const states = collab!.getAwareness().getStates() as Map<
-            number,
-            AwarenessState
-          >
-          const newDecorations: any[] = []
+        const awarenessObserver = (states: Map<number, AwarenessState>) => {
           if (!editorRef.current) return
+
+          const newDecorations: any[] = []
           const monaco =
             (window as any).monaco ||
             editorRef.current._standaloneKeybindingService?._monaco
@@ -301,7 +268,16 @@ const EditDocument: React.FC = () => {
           setCollaborators(remoteUsers)
         }
 
-        collab.getAwareness().on('change', awarenessObserver)
+        collab = new CollaborationProvider(
+          id,
+          user,
+          handleServerMessage,
+          (state) => setSynced(state),
+          (str) => setMarkdown(str),
+          awarenessObserver
+        )
+
+        collaborationRef.current = collab
       } catch (err) {
         console.error('Init error:', err)
       }
@@ -310,12 +286,6 @@ const EditDocument: React.FC = () => {
     init()
 
     return () => {
-      if (collab && yObserver) collab.text.unobserve(yObserver)
-      if (previewTimerRef.current) clearTimeout(previewTimerRef.current)
-
-      if (collab && awarenessObserver)
-        collab.getAwareness().off('change', awarenessObserver)
-
       if (bindingRef.current) {
         bindingRef.current.destroy()
         bindingRef.current = null

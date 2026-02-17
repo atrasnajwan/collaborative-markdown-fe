@@ -28,6 +28,7 @@ export interface AwarenessState {
 }
 
 type OnSyncCallback = (state: boolean) => void
+type AwarenessChangeHandler = (states: Map<number, AwarenessState>) => void
 
 export class CollaborationProvider {
   private doc: YDoc
@@ -39,6 +40,9 @@ export class CollaborationProvider {
 
   private documentId: string
   private onMsg: (e: any) => void
+  private textObserver: () => void
+  private onAwarenessChange: AwarenessChangeHandler
+  private textTimeout: any = null
 
   private hasEverSynced = false
   private reconnectAttempts = 0
@@ -51,16 +55,32 @@ export class CollaborationProvider {
     documentId: string,
     user: User,
     onMsg: (e: any) => void,
-    onSync: OnSyncCallback
+    onSync: OnSyncCallback,
+    onText: (str: string) => void,
+    onAwarenessChange: AwarenessChangeHandler
   ) {
     this.doc = new YDoc()
     this.text = this.doc.getText('content')
+    this.textObserver = () => {
+      // Clear the previous timer if the user is still typing
+      if (this.textTimeout) {
+        clearTimeout(this.textTimeout)
+      }
+
+      this.textTimeout = setTimeout(() => {
+        if (this.provider) {
+          onText(this.getContent())
+        }
+        this.textTimeout = null
+      }, 300)
+    }
 
     this.user = user
     this.documentId = documentId
     this.onMsg = onMsg
     this.onSyncReady = onSync
-
+    this.onAwarenessChange = onAwarenessChange
+    this.text.observe(this.textObserver)
     this.createProvider()
   }
 
@@ -75,15 +95,32 @@ export class CollaborationProvider {
     )
 
     this.setupListeners()
+    this.provider.awareness.on('change', () => {
+      const states = this.provider!.awareness.getStates() as Map<
+        number,
+        AwarenessState
+      >
+
+      this.onAwarenessChange(states)
+    })
 
     this.provider.connect()
 
-    // set user metadata
-    this.provider.awareness.setLocalStateField('user', {
-      id: this.user.id,
-      name: this.user.name,
-      color: this.getUserColor(), // Assign a color based on user id (simple hash or pick from array)
-    })
+    // this.provider.ws?.addEventListener('close', (event: CloseEvent) => {
+    //   if (event.code === 4001) {
+    //     console.warn('WS closed due to auth expiration')
+    //     api
+    //       .refreshToken()
+    //       .then((token) => {
+    //         api.setToken(token)
+    //         this.provider.destroy()
+    //         this.reconnectAttempts = 0
+    //         this.hasEverSynced = false
+    //         this.createProvider()
+    //       })
+    //       .catch((err) => {})
+    //   }
+    // })
   }
 
   private recreateProvider() {
@@ -103,6 +140,8 @@ export class CollaborationProvider {
     )
 
     setTimeout(() => {
+      // this.provider.awareness.setLocalState(null)
+      this.provider.awareness.destroy()
       this.provider.destroy()
       this.createProvider()
     }, delay)
@@ -134,6 +173,13 @@ export class CollaborationProvider {
         this.hasEverSynced = true
         this.reconnectAttempts = 0
         this.clearWatchdog()
+
+        // set user metadata
+        this.provider.awareness.setLocalStateField('user', {
+          id: this.user.id,
+          name: this.user.name,
+          color: this.getUserColor(), // Assign a color based on user id (simple hash or pick from array)
+        })
       }
     })
 
@@ -173,8 +219,12 @@ export class CollaborationProvider {
       this.syncWatchdog = null
     }
   }
+
   public destroy() {
+    this.text.unobserve(this.textObserver)
+    this.provider.shouldConnect = false
     this.clearWatchdog()
+    this.provider.awareness.destroy()
     this.provider.destroy()
     this.doc.destroy()
   }
