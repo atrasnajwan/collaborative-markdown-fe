@@ -100,7 +100,7 @@ class ApiService {
 
         // retry original request once
         return this.request<T>(endpoint, options, false)
-      } catch {
+      } catch (err) {
         this.clearToken()
         throw err
       }

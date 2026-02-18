@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from 'react'
-import { api, ApiError } from '../services/api'
+import { api } from '../services/api'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useNotification } from './NotificationContext'
 import { User } from '../types/types'
