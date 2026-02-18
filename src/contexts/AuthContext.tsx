@@ -1,13 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { api } from '../services/api'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from 'react'
+import { api, ApiError } from '../services/api'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useNotification } from './NotificationContext'
 import { User } from '../types/types'
 
 interface AuthContextType {
   user: User | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (name: string, email: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -26,42 +32,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
   const navigate = useNavigate()
   const location = useLocation()
-  const redirectTo: string = location.state?.redirectTo || ''
+  const { showNotification } = useNotification()
+
+  const initializeAuth = useCallback(async () => {
+    try {
+      const userData = await api.getCurrentUser()
+      setUser(userData)
+    } catch {
+      console.error('Failed to restore session:')
+      api.clearToken()
+    }
+    setIsLoading(false)
+  }, [])
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const userData = await api.getCurrentUser()
-        setUser(userData)
-      } catch {
-        console.error('Failed to restore session:')
-        api.clearToken()
-      }
-      setIsLoading(false)
-    }
-
     initializeAuth()
-  }, [])
+  }, [initializeAuth])
 
   const login = async (email: string, password: string) => {
     try {
       const response = await api.login(email, password)
+      console.log(response)
       setUser(response.user)
-      if (redirectTo !== '') return navigate(redirectTo)
-      // to documents page
-      navigate('/documents')
-    } catch (error) {
-      throw error
-    }
-  }
+      const redirectTo = location.state?.redirectTo || '/documents'
+      navigate(redirectTo, { replace: true })
 
-  const register = async (name: string, email: string, password: string) => {
-    try {
-      await api.register(name, email, password)
+      showNotification('Welcome back!', 'success')
     } catch (error) {
-      throw error
+      showNotification(error, 'error')
     }
   }
 
@@ -78,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

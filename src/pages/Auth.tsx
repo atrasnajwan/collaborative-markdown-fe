@@ -11,6 +11,8 @@ import {
   CircularProgress,
   Container,
 } from '@mui/material'
+import { api } from '../services/api'
+import { useNotification } from '../contexts/NotificationContext'
 
 const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true)
@@ -21,8 +23,9 @@ const Auth: React.FC = () => {
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login, register, user, isLoading: isAuthLoading } = useAuth()
+  const { login, user, isLoading: isAuthLoading } = useAuth()
   const navigate = useNavigate()
+  const { showNotification } = useNotification()
 
   useEffect(() => {
     if (!isAuthLoading && user) {
@@ -55,12 +58,12 @@ const Auth: React.FC = () => {
       if (isLogin) {
         await login(formData.email, formData.password)
       } else {
-        await register(formData.name, formData.email, formData.password)
+        await api.register(formData.name, formData.email, formData.password)
         setIsLogin(true)
         setFormData({ name: '', email: '', password: '' })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      showNotification(err)
     } finally {
       setIsLoading(false)
     }

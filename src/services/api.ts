@@ -23,6 +23,33 @@ export interface GetDocumentsParams {
   per_page?: number
 }
 
+export class ApiError extends Error {
+  status: number
+  data: any
+
+  constructor(status: number, data: any) {
+    super(data.message || 'An API error occurred')
+    this.name = 'ApiError'
+    this.status = status
+    this.data = data
+  }
+}
+
+const buildUrl = (endpoint: string, params?: Record<string, any>) => {
+  const queryParams = new URLSearchParams()
+  if (params) {
+    Object.keys(params).forEach(
+      (key) =>
+        params[key] !== undefined &&
+        queryParams.append(key, params[key].toString())
+    )
+  }
+  const queryString = queryParams.toString()
+  return `${endpoint}${queryString ? `?${queryString}` : ''}`
+}
+
+const NO_AUTH_ENDOINT = ['/refresh', '/login', '/register']
+
 class ApiService {
   private token: string | null = null
   private isRefreshing: boolean = false
@@ -62,27 +89,35 @@ class ApiService {
       credentials: 'include', // important for refresh cookie
     })
 
-    if (response.status === 401 && retry && endpoint !== '/refresh') {
+    if (
+      response.status === 401 &&
+      retry &&
+      !NO_AUTH_ENDOINT.includes(endpoint)
+    ) {
       try {
         const token = await this.refreshToken()
         this.setToken(token)
 
         // retry original request once
         return this.request<T>(endpoint, options, false)
-      } catch (err) {
+      } catch {
         this.clearToken()
-        // window.location.href = '/'
-        // throw err
+        throw err
       }
-    }
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.message || 'An error occurred')
     }
 
     if (response.status === 204) {
       return {} as T
+    }
+
+    if (!response.ok) {
+      let errorData
+      try {
+        errorData = await response.json()
+      } catch {
+        errorData = { message: 'Internal Server Error' }
+      }
+      throw new ApiError(response.status, errorData)
     }
 
     return response.json()
@@ -110,7 +145,7 @@ class ApiService {
         })
 
         if (!response.ok) {
-          throw new Error('Refresh failed')
+          throw new Error('Session expired')
         }
         const data = await response.json()
         resolve(data.access_token)
@@ -135,18 +170,7 @@ class ApiService {
   async getDocuments(
     params: GetDocumentsParams = {}
   ): Promise<PaginatedResponse<Document>> {
-    const queryParams = new URLSearchParams()
-
-    if (params.page) {
-      queryParams.append('page', params.page.toString())
-    }
-
-    if (params.per_page) {
-      queryParams.append('per_page', params.per_page.toString())
-    }
-
-    const queryString = queryParams.toString()
-    const endpoint = `/documents${queryString ? `?${queryString}` : ''}`
+    const endpoint = buildUrl('/documents', params)
 
     return this.request<PaginatedResponse<Document>>(endpoint)
   }
@@ -154,18 +178,7 @@ class ApiService {
   async getSharedDocuments(
     params: GetDocumentsParams = {}
   ): Promise<PaginatedResponse<Document>> {
-    const queryParams = new URLSearchParams()
-
-    if (params.page) {
-      queryParams.append('page', params.page.toString())
-    }
-
-    if (params.per_page) {
-      queryParams.append('per_page', params.per_page.toString())
-    }
-
-    const queryString = queryParams.toString()
-    const endpoint = `/documents/shared${queryString ? `?${queryString}` : ''}`
+    const endpoint = buildUrl('/documents/shared', params)
 
     return this.request<PaginatedResponse<Document>>(endpoint)
   }

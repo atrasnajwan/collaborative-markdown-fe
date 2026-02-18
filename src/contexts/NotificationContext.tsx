@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
 import { Snackbar, Alert, AlertColor } from '@mui/material'
+import { ApiError } from '../services/api'
 
 interface NotificationContextType {
   showNotification: (
@@ -59,12 +60,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   )
 }
 
-const parseError = (error: any): string => {
+export const parseError = (error: any): string => {
   if (typeof error === 'string') return error
 
-  // Handle Axios/API response errors (usually where the backend sends a message)
-  if (error.response?.data?.message) {
-    return error.response.data.message
+  // Handle API response errors
+  if (error instanceof ApiError) {
+    if (error.status === 422) {
+      const message = error.data.errors
+        ? Object.values(error.data.errors).flat().join(', ')
+        : error.message
+      return message
+    } else {
+      return error.message
+    }
   }
 
   // Handle standard JavaScript Error objects (e.g., throw new Error("..."))
