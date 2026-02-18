@@ -1,36 +1,9 @@
 import { config } from '../config/env'
-
-export interface User {
-  id: number
-  name: string
-  email: string
-}
+import { User, Document, Collaborator, UserRole } from '../types/types'
 
 export interface LoginResponse {
   access_token: string
   user: User
-}
-
-export enum UserRole {
-  Owner = 'owner',
-  Editor = 'editor',
-  Viewer = 'viewer',
-  None = 'none',
-}
-
-export type Collaborator = {
-  user: User
-  role: 'owner' | 'editor' | 'viewer'
-}
-
-export interface Document {
-  id: number
-  title: string
-  created_at: string
-  updated_at: string
-  role: UserRole
-  owner_name: string
-  owner_id: number
 }
 
 export interface PaginationMeta {

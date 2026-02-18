@@ -26,20 +26,15 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 import { useNotification } from '../contexts/NotificationContext'
 import { useAuth } from '../contexts/AuthContext'
-import { api, UserRole } from '../services/api'
+import { api } from '../services/api'
+import { CollaborationProvider } from '../services/CollaborationProvider'
 import {
   AwarenessState,
-  CollaborationProvider,
   CursorPosition,
   SelectionRange,
   UserAwareness,
-} from '../services/CollaborationProvider'
-
-loader.config({
-  paths: {
-    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs',
-  },
-})
+  UserRole,
+} from '../types/types'
 
 const EditDocument: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -135,9 +130,9 @@ const EditDocument: React.FC = () => {
         handleKicked(`Document has been deleted by the owner!`)
         break
 
-      // case 'auth-error':
-      //   handleKicked(`Invalid authentication! Try refresh your browser`)
-      //   break
+      case 'auth-error':
+        handleKicked(`Invalid authentication! Try refresh your browser`)
+        break
 
       case 'no-access':
         handleKicked(`You don't have access to this document!`)

@@ -1,31 +1,13 @@
 import { Doc as YDoc, Text as YText } from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { config } from '../config/env'
-import { api, User } from '../services/api'
-
-export interface CursorPosition {
-  line: number
-  column: number
-}
-
-export interface SelectionRange {
-  startLine: number
-  startColumn: number
-  endLine: number
-  endColumn: number
-}
-
-export interface UserAwareness {
-  id: number
-  name: string
-  color: string
-}
-
-export interface AwarenessState {
-  cursor?: CursorPosition // Nullable in case of blur
-  uiSelection?: SelectionRange // Nullable in case of no selection
-  user: UserAwareness
-}
+import { api } from '../services/api'
+import {
+  AwarenessState,
+  CursorPosition,
+  SelectionRange,
+  User,
+} from '../types/types'
 
 type OnSyncCallback = (state: boolean) => void
 type AwarenessChangeHandler = (states: Map<number, AwarenessState>) => void
@@ -49,7 +31,7 @@ export class CollaborationProvider {
   private syncWatchdog: any = null
 
   private readonly MAX_RECONNECT_ATTEMPTS = 5
-  private readonly BASE_DELAY = 1000 // 1s
+  private readonly BASE_DELAY = 2000 // 2s
 
   constructor(
     documentId: string,
@@ -105,22 +87,6 @@ export class CollaborationProvider {
     })
 
     this.provider.connect()
-
-    // this.provider.ws?.addEventListener('close', (event: CloseEvent) => {
-    //   if (event.code === 4001) {
-    //     console.warn('WS closed due to auth expiration')
-    //     api
-    //       .refreshToken()
-    //       .then((token) => {
-    //         api.setToken(token)
-    //         this.provider.destroy()
-    //         this.reconnectAttempts = 0
-    //         this.hasEverSynced = false
-    //         this.createProvider()
-    //       })
-    //       .catch((err) => {})
-    //   }
-    // })
   }
 
   private recreateProvider() {
@@ -197,6 +163,7 @@ export class CollaborationProvider {
     }
   }
 
+  // watch sync process, if not sync yet re-create provider
   private startSyncWatchdog() {
     this.clearWatchdog()
 
@@ -221,8 +188,8 @@ export class CollaborationProvider {
   }
 
   public destroy() {
-    this.text.unobserve(this.textObserver)
     this.provider.shouldConnect = false
+    this.text.unobserve(this.textObserver)
     this.clearWatchdog()
     this.provider.awareness.destroy()
     this.provider.destroy()

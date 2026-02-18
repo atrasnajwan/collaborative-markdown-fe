@@ -18,9 +18,10 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { api, Collaborator, User, UserRole } from '../services/api'
+import { api } from '../services/api'
 import { red } from '@mui/material/colors'
 import DeleteDialog from './DeleteDialog'
+import { User, Collaborator, UserRole } from '../types/types'
 
 type ShareDocumentModalProps = {
   open: boolean

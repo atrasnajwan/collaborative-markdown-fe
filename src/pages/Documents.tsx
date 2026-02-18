@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { api, Document, UserRole } from '../services/api'
+import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -36,6 +36,7 @@ import CreateDocumentModal from '../components/CreateDocumentModal'
 import DocumentCard from '../components/DocumentCard'
 import DeleteDialog from '../components/DeleteDialog'
 import { useNotification } from '../contexts/NotificationContext'
+import { UserRole, Document } from '../types/types'
 
 enum ViewOption {
   My,
@@ -341,7 +342,7 @@ const Documents: React.FC = () => {
               <Typography variant="h5" color="text.secondary">
                 {view === ViewOption.My
                   ? 'No documents yet. Create your first one!'
-                  : 'No documents shared to you'}
+                  : 'No documents shared with you'}
               </Typography>
               {!isMobile && view === ViewOption.My && (
                 <Button

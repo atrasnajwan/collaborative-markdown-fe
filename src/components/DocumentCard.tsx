@@ -12,10 +12,10 @@ import {
   Stack,
 } from '@mui/material'
 import { red } from '@mui/material/colors'
-import { Document, User, UserRole } from '../services/api'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DeleteIcon from '@mui/icons-material/Delete'
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt'
+import { User, UserRole, Document } from '../types/types'
 
 type DocumentCardProps = {
   doc: Document

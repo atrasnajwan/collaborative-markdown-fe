@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { api, User } from '../services/api'
+import { api } from '../services/api'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { User } from '../types/types'
 
 interface AuthContextType {
   user: User | null
