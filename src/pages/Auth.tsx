@@ -7,7 +7,6 @@ import {
   TextField,
   Button,
   Typography,
-  Alert,
   CircularProgress,
   Container,
 } from '@mui/material'
@@ -21,7 +20,6 @@ const Auth: React.FC = () => {
     email: '',
     password: '',
   })
-  const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { login, user, isLoading: isAuthLoading } = useAuth()
   const navigate = useNavigate()
@@ -51,7 +49,6 @@ const Auth: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setIsLoading(true)
 
     try {
@@ -96,12 +93,6 @@ const Auth: React.FC = () => {
           >
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-              {error}
-            </Alert>
-          )}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ space: 2 }}>
             {!isLogin && (
@@ -164,7 +155,6 @@ const Auth: React.FC = () => {
             <Button
               onClick={() => {
                 setIsLogin(!isLogin)
-                setError('')
                 setFormData({ name: '', email: '', password: '' })
               }}
               disabled={isLoading}

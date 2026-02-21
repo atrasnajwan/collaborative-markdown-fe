@@ -35,6 +35,13 @@ export class ApiError extends Error {
   }
 }
 
+export class SessionExpiredError extends Error {
+  constructor() {
+    super('Session expired')
+    this.name = 'SessionExpiredError'
+  }
+}
+
 const buildUrl = (endpoint: string, params?: Record<string, any>) => {
   const queryParams = new URLSearchParams()
   if (params) {
@@ -48,15 +55,20 @@ const buildUrl = (endpoint: string, params?: Record<string, any>) => {
   return `${endpoint}${queryString ? `?${queryString}` : ''}`
 }
 
-const NO_AUTH_ENDOINT = ['/refresh', '/login', '/register']
+const NO_AUTH_ENDPOINT = ['/refresh', '/login', '/register']
 
 class ApiService {
   private token: string | null = null
   private isRefreshing: boolean = false
   private refreshPromise: Promise<string> | null = null
+  private onSessionExpired: (() => void) | null = null
 
   setToken(token: string) {
     this.token = token
+  }
+
+  setSessionExpiredHandler(handler: (() => void) | null) {
+    this.onSessionExpired = handler
   }
 
   getToken(): string | null {
@@ -92,7 +104,7 @@ class ApiService {
     if (
       response.status === 401 &&
       retry &&
-      !NO_AUTH_ENDOINT.includes(endpoint)
+      !NO_AUTH_ENDPOINT.includes(endpoint)
     ) {
       try {
         const token = await this.refreshToken()
@@ -145,7 +157,10 @@ class ApiService {
         })
 
         if (!response.ok) {
-          throw new Error('Session expired')
+          this.clearToken()
+          this.onSessionExpired?.()
+          reject(new SessionExpiredError())
+          return
         }
         const data = await response.json()
         resolve(data.access_token)

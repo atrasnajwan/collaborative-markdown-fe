@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from 'react'
 import { api } from '../services/api'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -32,20 +33,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const sessionExpiredHandledRef = useRef(false)
 
   const navigate = useNavigate()
   const location = useLocation()
   const { showNotification } = useNotification()
+
+  useEffect(() => {
+    api.setSessionExpiredHandler(() => {
+      if (sessionExpiredHandledRef.current) return
+      sessionExpiredHandledRef.current = true
+      setUser(null)
+      navigate('/auth', { replace: true })
+      showNotification('Session expired. Please sign in again.', 'error')
+    })
+    return () => api.setSessionExpiredHandler(null)
+  }, [navigate, showNotification])
 
   const initializeAuth = useCallback(async () => {
     try {
       const userData = await api.getCurrentUser()
       setUser(userData)
     } catch {
-      console.error('Failed to restore session:')
       api.clearToken()
+      setUser(null)
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }, [])
 
   useEffect(() => {
@@ -55,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (email: string, password: string) => {
     try {
       const response = await api.login(email, password)
-      console.log(response)
+      sessionExpiredHandledRef.current = false
       setUser(response.user)
       const redirectTo = location.state?.redirectTo || '/documents'
       navigate(redirectTo, { replace: true })
