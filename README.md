@@ -13,7 +13,8 @@ A lightweight, real-time collaborative Markdown editor built with React and Type
 - React 18 + TypeScript
 - Monaco Editor, Yjs, y-websocket
 - react-markdown for rendering
-- Tailwind CSS + PostCSS for styles
+- Material UI (MUI) for components and theming
+- Tailwind CSS + PostCSS for utilities
 - Vite for development and build
 
 ## Project Structure
@@ -21,7 +22,8 @@ A lightweight, real-time collaborative Markdown editor built with React and Type
 ```
 src/
 ├── pages/         # Page components (Auth, Documents, EditDocument, Landing)
-├── components/    # Reusable UI components
+├── components/    # Reusable UI components (ProtectedRoute, modals, etc.)
+├── layout/        # Layout wrappers
 ├── services/      # API and collaboration services
 ├── contexts/      # React contexts (AuthContext, NotificationContext)
 ├── config/        # Theme and env helpers
@@ -62,15 +64,15 @@ pnpm run preview
 
 ## Configuration & Environment
 
-- `VITE_API_URL`: Backend REST API base URL
-- `VITE_WEBSOCKET_URL`: WebSocket (y-websocket) server URL for Yjs sync
-- `VITE_PORT`: Local dev server port (optional)
+- `VITE_API_URL` — Backend REST API base URL (required). Backend should support cookie-based refresh at `POST /refresh` for session renewal.
+- `VITE_WEBSOCKET_URL` — WebSocket (y-websocket) server URL for Yjs sync
+- `VITE_PORT` — Local dev server port (optional)
 
 ## Key Services
 
 - **CollaborationProvider** — Manages Yjs documents, websocket connection, and awareness (presence/cursors).
-- **ApiService** — Handles authentication, document CRUD and sharing endpoints.
-- **AuthContext** — Stores auth state and exposes login/logout helpers.
+- **ApiService** — Handles authentication (login, token refresh), document CRUD and sharing. On 401 it attempts a refresh
+- **AuthContext** — Stores auth state, login/logout, and registers the session-expired handler
 
 ## Collaboration Features
 
@@ -82,13 +84,4 @@ pnpm run preview
 
 - To inspect real-time updates, open the same document in multiple browser windows.
 - Cursor colors are deterministic based on user ID hash.
-
-## Contributing
-
-Contributions are welcome. Please open issues or PRs for bugs and enhancements.
-
-1. Fork the repo
-2. Create a feature branch
-3. Run `pnpm install` and `pnpm run dev` locally
-4. Add tests where applicable and ensure linting passes
 
