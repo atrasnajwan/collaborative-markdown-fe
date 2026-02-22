@@ -1,4 +1,6 @@
 # Collaborative Markdown Editor
+![collab-editor](https://github.com/user-attachments/assets/9228f46c-c0f7-4842-a943-4e14f746193a)
+
 
 A lightweight, real-time collaborative Markdown editor built with React and TypeScript. It provides simultaneous editing powered by Yjs, live cursor awareness, role-based access control, and a Markdown preview.
 
