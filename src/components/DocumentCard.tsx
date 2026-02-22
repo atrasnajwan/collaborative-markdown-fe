@@ -14,6 +14,7 @@ import {
 import { red } from '@mui/material/colors'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt'
 import { User, UserRole, Document } from '../types/types'
 
@@ -24,6 +25,7 @@ type DocumentCardProps = {
   onClickMenu: (e: React.MouseEvent<HTMLElement>, doc: Document) => void
   onClickShare: (e: React.MouseEvent<HTMLElement>) => void
   onClickDelete: (e: React.MouseEvent<HTMLElement>) => void
+  onClickRename: (e: React.MouseEvent<HTMLElement>) => void
   isMenuOpen: boolean
   onCloseMenu: () => void
   anchorEl: HTMLElement | null
@@ -34,6 +36,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   user,
   onClick,
   onClickMenu,
+  onClickRename,
   onClickShare,
   onClickDelete,
   isMenuOpen,
@@ -153,6 +156,10 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
+            <MenuItem onClick={onClickRename}>
+              <EditIcon sx={{ mr: 1 }} />
+              Rename
+            </MenuItem>
             <MenuItem onClick={onClickShare}>
               <PersonAddAltIcon sx={{ mr: 1 }} />
               Share

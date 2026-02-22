@@ -158,7 +158,7 @@ class ApiService {
 
         if (!response.ok) {
           this.clearToken()
-          this.onSessionExpired?.()
+          if (response.status === 401) this.onSessionExpired?.()
           reject(new SessionExpiredError())
           return
         }
@@ -262,6 +262,16 @@ class ApiService {
   async deleteDocument(docId: number | string): Promise<void> {
     return this.request<void>(`/documents/${docId}`, {
       method: 'DELETE',
+    })
+  }
+
+  async renameDocument(
+    docId: number | string,
+    title: string
+  ): Promise<Document> {
+    return this.request<Document>(`/documents/${docId}/rename`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
     })
   }
 }

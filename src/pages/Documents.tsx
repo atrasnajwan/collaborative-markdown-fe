@@ -33,6 +33,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 
 import ShareDocumentModal from '../components/ShareDocumentModal'
 import CreateDocumentModal from '../components/CreateDocumentModal'
+import RenameDocumentModal from '../components/RenameDocumentModal'
 import DocumentCard from '../components/DocumentCard'
 import DeleteDialog from '../components/DeleteDialog'
 import { useNotification } from '../contexts/NotificationContext'
@@ -52,6 +53,8 @@ const Documents: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
+
   const { logout, user } = useAuth()
   const navigate = useNavigate()
   const theme = useTheme()
@@ -110,7 +113,7 @@ const Documents: React.FC = () => {
         setIsLoadingMore(false)
       }
     },
-    []
+    [showNotification]
   )
 
   useEffect(() => {
@@ -170,6 +173,12 @@ const Documents: React.FC = () => {
 
   const handleCloseMenu = () => setMenuAnchor(null)
 
+  const handleRename = (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation()
+    setIsRenameModalOpen(true)
+    handleCloseMenu()
+  }
+
   const handleShare = async (e: React.MouseEvent<HTMLElement>) => {
     e.stopPropagation()
     setIsShareModalOpen(true)
@@ -195,6 +204,24 @@ const Documents: React.FC = () => {
       showNotification(err, 'error')
     } finally {
       setIsDeleteLoading(false)
+    }
+  }
+
+  const handleRenameDocument = async (e: React.FormEvent, title: string) => {
+    e.preventDefault()
+    if (!selectedDocument) return
+    try {
+      const updated = await api.renameDocument(selectedDocument.id, title)
+      setDocuments((prev) =>
+        prev.map((d) =>
+          d.id === updated.id ? { ...d, title: updated.title } : d
+        )
+      )
+      setSelectedDocument(updated)
+      setIsRenameModalOpen(false)
+      showNotification('Document renamed successfully', 'success')
+    } catch (err) {
+      showNotification(err, 'error')
     }
   }
 
@@ -375,6 +402,7 @@ const Documents: React.FC = () => {
                     user={user}
                     onClick={toEditPage}
                     onClickMenu={handleOpenMenu}
+                    onClickRename={handleRename}
                     onClickShare={handleShare}
                     onClickDelete={handleDelete}
                     isMenuOpen={isMenuOpen}
@@ -419,6 +447,12 @@ const Documents: React.FC = () => {
         handleCreateDocument={handleCreateDocument}
         onClose={() => setIsCreateModalOpen(false)}
       />
+      <RenameDocumentModal
+        open={isRenameModalOpen}
+        initialTitle={selectedDocument ? selectedDocument.title : ''}
+        handleRenameDocument={handleRenameDocument}
+        onClose={() => setIsRenameModalOpen(false)}
+      />
       {selectedDocument && (
         <>
           <ShareDocumentModal
@@ -443,7 +477,7 @@ const Documents: React.FC = () => {
 interface DrawerContentProps {
   currentView: ViewOption
   onClose: () => void
-  onItemClick: (option: ViewOption) => void
+  onItemClick: (_option: ViewOption) => void
 }
 const DrawerContent: React.FC<DrawerContentProps> = ({
   currentView,
