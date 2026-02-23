@@ -31,7 +31,7 @@ export class CollaborationProvider {
   private syncWatchdog: any = null
 
   private readonly MAX_RECONNECT_ATTEMPTS = 5
-  private readonly BASE_DELAY = 2000 // 2s
+  private readonly BASE_DELAY = 5000 // 5s
 
   constructor(
     documentId: string,
@@ -106,7 +106,6 @@ export class CollaborationProvider {
     )
 
     setTimeout(() => {
-      // this.provider.awareness.setLocalState(null)
       this.provider.awareness.destroy()
       this.provider.destroy()
       this.createProvider()
@@ -115,7 +114,7 @@ export class CollaborationProvider {
 
   private setupListeners() {
     this.provider.on('status', ({ status }: any) => {
-      console.log('WS status:', status)
+      console.log('WS status:', status, new Date().toLocaleString())
 
       if (status === 'connected') {
         this.synced = false
@@ -151,6 +150,19 @@ export class CollaborationProvider {
 
     this.provider.on('message', (event: any) => {
       this.rawMsgHandler(event, this.onMsg)
+    })
+
+    this.provider.on('connection-close', async (event: CloseEvent) => {
+      if (event.code === 4001) {
+        console.log('Disconnected with status code: ' + event.code)
+        try {
+          const token = await api.refreshToken()
+          api.setToken(token)
+          this.recreateProvider()
+        } catch (err) {
+          console.error(err)
+        }
+      }
     })
   }
 

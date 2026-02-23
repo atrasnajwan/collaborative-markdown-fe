@@ -347,6 +347,10 @@ const EditDocument: React.FC = () => {
         modelRef.current.dispose()
         modelRef.current = null
       }
+      if (collaborationRef.current) {
+        collaborationRef.current.destroy()
+        collaborationRef.current = null
+      }
     }
   }, [])
 
