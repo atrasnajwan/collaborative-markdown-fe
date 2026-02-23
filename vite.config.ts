@@ -28,7 +28,10 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         // monaco-editor binding for y-monaco
-        'monaco-editor/esm/vs/editor/editor.api.js': path.resolve(__dirname, 'src/monaco-shim.ts'),
+        'monaco-editor/esm/vs/editor/editor.api.js': path.resolve(
+          __dirname,
+          'src/monaco-shim.ts'
+        ),
       },
     },
     build: {
@@ -42,26 +45,24 @@ export default defineConfig(({ mode }) => {
               }
               // Markdown Parsing
               if (
-                id.includes('react-markdown') ||
-                id.includes('remark') ||
-                id.includes('rehype') ||
-                id.includes('micromark')
+                id.includes('markdown-it') ||
+                id.includes('markdown-it-emoji') ||
+                id.includes('dompurify') ||
+                id.includes('prism')
               ) {
                 return 'markdown-engine'
               }
+
               // Collaboration logic
-              if (id.includes('/node_modules/yjs/')) {
-                return 'collab-yjs'
+              if (
+                id.includes('yjs') ||
+                id.includes('y-websocket') ||
+                id.includes('y-protocols') ||
+                id.includes('y-monaco')
+              ) {
+                return 'collab-engine'
               }
-              if (id.includes('/node_modules/y-websocket/')) {
-                return 'collab-websocket'
-              }
-              if (id.includes('/node_modules/y-protocols/')) {
-                return 'collab-protocols'
-              }
-              if (id.includes('/node_modules/y-monaco/')) {
-                return 'collab-monaco'
-              }
+
               // React core
               if (id.includes('react/') || id.includes('react-dom/')) {
                 return 'vendor-react'

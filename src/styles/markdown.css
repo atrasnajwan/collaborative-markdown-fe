@@ -1,133 +1,117 @@
+/* Preview styling */
 .markdown-preview {
   padding: 1rem;
-  color: #d4d4d4;
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  word-wrap: break-word;
 }
 
-.markdown-preview .icon-link {
-  opacity: 0;
-  text-decoration: none;
-  color: #448aff;
-  margin-left: 8px;
-  transition: opacity 0.2s;
-}
-
-.markdown-preview h1,
-.markdown-preview h2,
-.markdown-preview h3,
-.markdown-preview h4,
-.markdown-preview h5,
-.markdown-preview h6 {
-  color: #fff;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.markdown-preview h1 {
-  font-size: 2rem;
-}
-.markdown-preview h2 {
-  font-size: 1.5rem;
-}
-.markdown-preview h3 {
-  font-size: 1.25rem;
-}
-
-.markdown-preview h1:hover .icon-link, 
-.markdown-preview h2:hover .icon-link, 
-.markdown-preview h3:hover .icon-link {
-  opacity: 1;
-}
-
-.markdown-preview p {
-  margin-bottom: 1rem;
-  line-height: 1.6;
-}
-
-.markdown-preview a {
-  color: #3794ff;
-  text-decoration: none;
-}
-
-.markdown-preview a:hover {
-  text-decoration: underline;
-}
-
-.markdown-preview table {
-  margin-bottom: 1rem;
-  border-collapse: collapse;
-  background-color: #1e1e1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.markdown-preview th {
-  padding: 12px 16px;
-  text-align: left;
-  background-color: #2d2d2d;
-  color: #fff;
+/* Header styling */
+.markdown-preview h1, .markdown-preview h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #21262d;
   font-weight: 600;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
 }
 
-.markdown-preview td {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #d4d4d4;
+.markdown-preview h1 { font-size: 2em; margin-top: 0; }
+.markdown-preview h2 { font-size: 1.5em; margin-top: 24px; }
+
+/* Links and Lists */
+.markdown-preview a {
+  color: #58a6ff;
+  text-decoration: none;
+}
+.markdown-preview a:hover { text-decoration: underline; }
+
+/* Ensure the preview container allows list markers */
+.markdown-preview ul {
+  list-style-type: disc !important; /* Forces the bullet points */
+  padding-left: 2rem !important;   /* Creates space for the bullets */
+  margin-bottom: 16px;
 }
 
-.markdown-preview tr:last-child td {
-  border-bottom: none;
-}
-
-.markdown-preview tr:nth-of-type(even) {
-  background-color: #252525;
-}
-
-.markdown-preview tr:hover {
-  background-color: #2a2a2a;
-}
-
-.markdown-preview code {
-  background-color: #1e1e1e;
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-size: 85%;
-  font-family: monospace;
-}
-
-.markdown-preview pre {
-  margin: 1rem 0;
-  padding: 0;
-  background-color: transparent;
-}
-
-.markdown-preview pre code {
-  padding: 0;
-  background-color: transparent;
-}
-
-.markdown-preview ul,
 .markdown-preview ol {
-  padding-left: 2rem;
-  margin-bottom: 1rem;
+  list-style-type: decimal !important; /* Forces 1. 2. 3. */
+  padding-left: 2rem !important;
+  margin-bottom: 16px;
+}
+
+/* Fix for nested lists */
+.markdown-preview ul ul, 
+.markdown-preview ol ul {
+  list-style-type: circle;
 }
 
 .markdown-preview li {
-  margin-bottom: 0.5rem;
+  display: list-item; /* Ensures it behaves like a list item */
+  margin-bottom: 4px;
 }
 
+/* Blockquotes */
 .markdown-preview blockquote {
-  border-left: 4px solid #404040;
-  padding-left: 1rem;
-  margin-left: 0;
-  margin-right: 0;
-  color: #a0a0a0;
+  padding: 0 1em;
+  color: #8b949e;
+  border-left: 0.25em solid #30363d;
+  margin: 0 0 16px 0;
 }
 
-.markdown-preview hr {
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin: 1.5rem 0;
+/* Code Block Container */
+.markdown-preview pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: #161b22;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+/* Inline Code (e.g. `const x`) */
+.markdown-preview code:not(pre code) {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  background-color: rgba(110, 118, 129, 0.4);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+}
+
+/* Code Block Container */
+.markdown-preview pre[class*="language-"] {
+  background: #161b22; /* GitHub dark code bg */
+  padding: 16px;
+  margin: 16px 0;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+  overflow: auto;
+}
+
+.markdown-preview code[class*="language-"] {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  text-shadow: none; /* Remove default Prism shadow */
+  color: #c9d1d9;
+}
+
+/* Syntax Colors */
+.token.comment, .token.prolog, .token.doctype, .token.cdata { color: #8b949e; }
+.token.punctuation { color: #8b949e; }
+.token.property, .token.tag, .token.boolean, .token.number, .token.constant, .token.symbol { color: #79c0ff; }
+.token.selector, .token.attr-name, .token.string, .token.char, .token.builtin, .token.inserted { color: #a5d6ff; }
+.token.operator, .token.entity, .token.url, .language-css .token.string, .style .token.string { color: #79c0ff; }
+.token.atrule, .token.attr-value, .token.keyword { color: #ff7b72; }
+.token.function, .token.class-name { color: #d2a8ff; }
+.token.regex, .token.important, .token.variable { color: #ffa657; }
+
+/* emoji scaling */
+.markdown-preview .emoji {
+  display: inline-block;
+  vertical-align: middle;
+  height: 1.2em;
+  width: 1.2em;
+  margin: 0 0.1em;
 }
 
 /* Editor styles */

@@ -1,13 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
-import rehypeSanitize from 'rehype-sanitize'
-import rehypeSlug from 'rehype-slug'
-import rehypeAutolinkHeadings from 'rehype-autolink-headings'
-import rehypeAddClasses from 'rehype-add-classes'
 import '../styles/markdown.css'
+import 'prismjs/themes/prism-tomorrow.css'
 import Editor, { loader } from '@monaco-editor/react'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import Visibility from '@mui/icons-material/Visibility'
@@ -21,9 +15,6 @@ import AvatarGroup from '@mui/material/AvatarGroup'
 import Avatar from '@mui/material/Avatar'
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos'
 
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
-
 import { useNotification } from '../contexts/NotificationContext'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
@@ -32,9 +23,45 @@ import {
   AwarenessState,
   CursorPosition,
   SelectionRange,
+  User,
   UserAwareness,
   UserRole,
 } from '../types/types'
+
+import DOMPurify from 'dompurify'
+import MarkdownIt from 'markdown-it'
+import { full as emoji } from 'markdown-it-emoji'
+import Prism from 'prismjs'
+import 'prismjs/plugins/autoloader/prism-autoloader'
+
+// Tell the prism autoloader where to find the language files (using a CDN)
+if (typeof window !== 'undefined') {
+  Prism.plugins.autoloader.languages_path =
+    'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/'
+}
+
+const mdParser: MarkdownIt = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  highlight: (code, lang) => {
+    // Check if the language is loaded in Prism
+    if (lang && Prism.languages[lang]) {
+      try {
+        return `<pre class="language-${lang}"><code class="language-${lang}">${Prism.highlight(
+          code,
+          Prism.languages[lang],
+          lang
+        )}</code></pre>`
+      } catch (e) {
+        console.error('Prism highlighting error:', e)
+      }
+    }
+
+    // Fallback for unknown languages
+    return `<pre class="language-none"><code class="language-none">${mdParser.utils.escapeHtml(code)}</code></pre>`
+  },
+}).use(emoji)
 
 const EditDocument: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -44,6 +71,7 @@ const EditDocument: React.FC = () => {
 
   const [monacoReady, setMonacoReady] = useState(false)
   const [markdown, setMarkdown] = useState<string>('')
+
   const [collaborators, setCollaborators] = useState<
     Record<number, UserAwareness>
   >({})
@@ -352,10 +380,6 @@ const EditDocument: React.FC = () => {
         modelRef.current.dispose()
         modelRef.current = null
       }
-      if (collaborationRef.current) {
-        collaborationRef.current.destroy()
-        collaborationRef.current = null
-      }
     }
   }, [])
 
@@ -405,28 +429,10 @@ const EditDocument: React.FC = () => {
           </Tooltip>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <AvatarGroup
-              max={4}
-              sx={{
-                '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 14 },
-              }}
-            >
-              {/* Show Yourself */}
-              {user && (
-                <Tooltip title={`${user.name} (You)`}>
-                  <Avatar {...stringAvatar(user.name)} />
-                </Tooltip>
-              )}
-
-              {/* Show Remote Collaborators */}
-              {Object.entries(collaborators).map(([userId, collaborator]) => (
-                <Tooltip key={userId} title={collaborator.name}>
-                  <Avatar
-                    {...stringAvatar(collaborator.name, collaborator.color)}
-                  />
-                </Tooltip>
-              ))}
-            </AvatarGroup>
+            <CollaboratorAvatars
+              currentUser={user}
+              collaborators={collaborators}
+            />
 
             {/* Connection Status Indicator */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -544,53 +550,7 @@ const EditDocument: React.FC = () => {
               display: { xs: 'none', md: 'block' },
             }}
           >
-            <div className="markdown-preview">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[
-                  rehypeRaw,
-                  rehypeSanitize,
-                  rehypeSlug,
-                  [
-                    rehypeAddClasses,
-                    { 'h1,h2,h3,h4,h5,h6': 'heading-with-hr' },
-                  ],
-                  [
-                    rehypeAutolinkHeadings,
-                    {
-                      behavior: 'append', // Change 'wrap' to 'append' or 'prepend'
-                      content: {
-                        type: 'element',
-                        tagName: 'span',
-                        properties: { className: ['icon-link'] },
-                        children: [{ type: 'text', value: ' #' }], // Or use an SVG icon
-                      },
-                    },
-                  ],
-                ]}
-                components={{
-                  code: ({ className, children, ...props }: any) => {
-                    const match = /language-(\w+)/.exec(className || '')
-                    return className ? (
-                      <SyntaxHighlighter
-                        {...props}
-                        style={vscDarkPlus}
-                        language={match ? match[1] : ''}
-                        PreTag="div"
-                      >
-                        {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
-                    ) : (
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    )
-                  },
-                }}
-              >
-                {markdown}
-              </ReactMarkdown>
-            </div>
+            <Preview md={mdParser} markdown={markdown} />
           </Box>
         )}
       </Box>
@@ -598,7 +558,52 @@ const EditDocument: React.FC = () => {
   )
 }
 
-function stringAvatar(name: string, color?: string) {
+const Preview: React.FC<{ md: MarkdownIt; markdown: string }> = ({
+  md,
+  markdown,
+}) => {
+  const html = useMemo(() => {
+    const rawHtml = md.render(markdown)
+    return DOMPurify.sanitize(rawHtml)
+  }, [md, markdown])
+
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: html }}
+      className="markdown-preview"
+    />
+  )
+}
+
+const CollaboratorAvatars: React.FC<{
+  collaborators: Record<number, UserAwareness>
+  currentUser: User | null
+}> = React.memo(({ collaborators, currentUser }) => {
+  return (
+    <AvatarGroup
+      max={4}
+      sx={{
+        '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 14 },
+      }}
+    >
+      {/* Show Yourself */}
+      {currentUser && (
+        <Tooltip title={`${currentUser.name} (You)`}>
+          <Avatar {...stringAvatar(currentUser.name)} />
+        </Tooltip>
+      )}
+
+      {/* Show Remote Collaborators */}
+      {Object.entries(collaborators).map(([userId, collaborator]) => (
+        <Tooltip key={userId} title={collaborator.name}>
+          <Avatar {...stringAvatar(collaborator.name, collaborator.color)} />
+        </Tooltip>
+      ))}
+    </AvatarGroup>
+  )
+})
+
+const stringAvatar = (name: string, color?: string) => {
   if (!color) {
     const hash = name
       .split('')
