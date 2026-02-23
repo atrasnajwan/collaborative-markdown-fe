@@ -17,25 +17,19 @@ export class CollaborationProvider {
   public provider!: WebsocketProvider
   public text: YText
   private user: User
-  public synced: boolean = false
   public onSyncReady: OnSyncCallback
 
   private documentId: string
+  private onStatus: (isConnected: boolean) => void
   private onMsg: (e: any) => void
   private textObserver: () => void
   private onAwarenessChange: AwarenessChangeHandler
   private textTimeout: any = null
 
-  private hasEverSynced = false
-  private reconnectAttempts = 0
-  private syncWatchdog: any = null
-
-  private readonly MAX_RECONNECT_ATTEMPTS = 5
-  private readonly BASE_DELAY = 5000 // 5s
-
   constructor(
     documentId: string,
     user: User,
+    onStatus: (isConnected: boolean) => void,
     onMsg: (e: any) => void,
     onSync: OnSyncCallback,
     onText: (str: string) => void,
@@ -59,6 +53,7 @@ export class CollaborationProvider {
 
     this.user = user
     this.documentId = documentId
+    this.onStatus = onStatus
     this.onMsg = onMsg
     this.onSyncReady = onSync
     this.onAwarenessChange = onAwarenessChange
@@ -90,26 +85,9 @@ export class CollaborationProvider {
   }
 
   private recreateProvider() {
-    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.error('Max reconnect attempts reached.')
-      return
-    }
-
-    this.reconnectAttempts++
-
-    const delay =
-      this.BASE_DELAY * Math.pow(2, this.reconnectAttempts - 1) +
-      Math.random() * 300 // jitter
-
-    console.warn(
-      `Recreating provider in ${delay}ms (attempt ${this.reconnectAttempts})`
-    )
-
-    setTimeout(() => {
-      this.provider.awareness.destroy()
-      this.provider.destroy()
-      this.createProvider()
-    }, delay)
+    this.provider.awareness.destroy()
+    this.provider.destroy()
+    this.createProvider()
   }
 
   private setupListeners() {
@@ -117,28 +95,20 @@ export class CollaborationProvider {
       console.log('WS status:', status, new Date().toLocaleString())
 
       if (status === 'connected') {
-        this.synced = false
+        this.onStatus(true)
         this.onSyncReady(false)
-
-        this.startSyncWatchdog()
       } else {
-        this.synced = false
+        this.onStatus(false)
         this.onSyncReady(false)
-        this.clearWatchdog()
       }
     })
 
     this.provider.on('sync', (isSynced: boolean) => {
       console.log('sync:', isSynced)
 
-      this.synced = isSynced
       this.onSyncReady(isSynced)
 
       if (isSynced) {
-        this.hasEverSynced = true
-        this.reconnectAttempts = 0
-        this.clearWatchdog()
-
         // set user metadata
         this.provider.awareness.setLocalStateField('user', {
           id: this.user.id,
@@ -158,6 +128,7 @@ export class CollaborationProvider {
         try {
           const token = await api.refreshToken()
           api.setToken(token)
+          console.log('Recreate provider cause session expired')
           this.recreateProvider()
         } catch (err) {
           console.error(err)
@@ -175,34 +146,9 @@ export class CollaborationProvider {
     }
   }
 
-  // watch sync process, if not sync yet re-create provider
-  private startSyncWatchdog() {
-    this.clearWatchdog()
-
-    const timeout = this.BASE_DELAY * Math.pow(2, this.reconnectAttempts)
-
-    this.syncWatchdog = setTimeout(() => {
-      if (!this.hasEverSynced) {
-        console.warn('Sync timeout. Forcing provider recreation.')
-        this.recreateProvider()
-      } else {
-        this.synced = true
-        this.onSyncReady(true)
-      }
-    }, timeout)
-  }
-
-  private clearWatchdog() {
-    if (this.syncWatchdog) {
-      clearTimeout(this.syncWatchdog)
-      this.syncWatchdog = null
-    }
-  }
-
   public destroy() {
     this.provider.shouldConnect = false
     this.text.unobserve(this.textObserver)
-    this.clearWatchdog()
     this.provider.awareness.destroy()
     this.provider.destroy()
     this.doc.destroy()

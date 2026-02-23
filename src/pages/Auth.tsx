@@ -152,8 +152,8 @@ const Auth: React.FC = () => {
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
-                  )
-                }
+                  ),
+                },
               }}
             />
 

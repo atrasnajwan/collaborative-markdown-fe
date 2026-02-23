@@ -49,6 +49,7 @@ const EditDocument: React.FC = () => {
   >({})
   const [title, setTitle] = useState<string>('')
   const [userRole, setUserRole] = useState<string>('')
+  const [wsConnected, setWsConnected] = useState<boolean>(false)
   const [synced, setSynced] = useState<boolean>(false)
   const [isEditorReady, setIsEditorReady] = useState<boolean>(false)
   const [showPreview, setShowPreview] = useState<boolean>(false)
@@ -266,6 +267,7 @@ const EditDocument: React.FC = () => {
         collab = new CollaborationProvider(
           id,
           user,
+          (isConnected) => setWsConnected(isConnected),
           handleServerMessage,
           (state) => setSynced(state),
           (str) => setMarkdown(str),
@@ -341,6 +343,9 @@ const EditDocument: React.FC = () => {
     })
   }
 
+  const isReadOnly = () =>
+    !isEditorReady || !synced || userRole === UserRole.Viewer
+
   useEffect(() => {
     return () => {
       if (modelRef.current) {
@@ -376,7 +381,7 @@ const EditDocument: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Tooltip title="Back to Documents">
               <IconButton
-                onClick={() => navigate('/documents')} // Adjust route path as needed
+                onClick={() => navigate('/documents')}
                 sx={{ color: 'white', ml: 0, mr: 1 }}
               >
                 <ArrowBackIosIcon />
@@ -438,7 +443,7 @@ const EditDocument: React.FC = () => {
                 variant="caption"
                 sx={{ color: 'rgba(255,255,255,0.7)' }}
               >
-                {synced ? 'Online' : 'Offline'}
+                {wsConnected ? 'Online' : 'Offline'}
               </Typography>
             </Box>
           </Box>
@@ -455,7 +460,7 @@ const EditDocument: React.FC = () => {
         }}
       >
         {/* Show a small toast instead of hiding the whole editor */}
-        {!synced && (
+        {(!wsConnected || !synced) && (
           <Box
             sx={{
               position: 'absolute',
@@ -470,7 +475,7 @@ const EditDocument: React.FC = () => {
               borderRadius: 1,
             }}
           >
-            Connecting...
+            {!wsConnected ? 'Connecting...' : !synced && 'Syncing...'}
           </Box>
         )}
 
@@ -492,11 +497,9 @@ const EditDocument: React.FC = () => {
               onMount={handleEditorDidMount}
               theme="vs-dark"
               options={{
-                readOnly:
-                  !isEditorReady || !synced || userRole === UserRole.Viewer,
-                domReadOnly:
-                  !isEditorReady || !synced || userRole === UserRole.Viewer,
-                minimap: { enabled: false },
+                readOnly: isReadOnly(),
+                domReadOnly: isReadOnly(),
+                minimap: { enabled: !showPreview },
                 fontSize: 14,
                 lineNumbers: 'on',
                 wordWrap: 'on',
