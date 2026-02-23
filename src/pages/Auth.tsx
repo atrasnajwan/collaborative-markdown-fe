@@ -9,7 +9,11 @@ import {
   Typography,
   CircularProgress,
   Container,
+  IconButton,
+  InputAdornment,
 } from '@mui/material'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { api } from '../services/api'
 import { useNotification } from '../contexts/NotificationContext'
 
@@ -20,6 +24,7 @@ const Auth: React.FC = () => {
     email: '',
     password: '',
   })
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { login, user, isLoading: isAuthLoading } = useAuth()
   const navigate = useNavigate()
@@ -77,11 +82,13 @@ const Auth: React.FC = () => {
     <Box
       sx={{
         minHeight: '100vh',
+        maxHeight: '100vh',
+        overflowY: 'auto',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         bgcolor: 'background.default',
-        py: 4,
+        py: { xs: 0, sm: 4 },
       }}
     >
       <Container maxWidth="sm">
@@ -126,13 +133,28 @@ const Auth: React.FC = () => {
               fullWidth
               id="password"
               label="Password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={handleChange}
               margin="normal"
               placeholder="••••••••"
               required
               disabled={isLoading}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }
+              }}
             />
 
             <Button

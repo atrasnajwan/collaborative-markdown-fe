@@ -281,6 +281,15 @@ const Documents: React.FC = () => {
             <MenuItem
               onClick={() => {
                 handleCloseProfile()
+                navigate('/profile')
+              }}
+            >
+              <AccountCircleIcon sx={{ mr: 1 }} />
+              Profile
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                handleCloseProfile()
                 logout()
               }}
             >

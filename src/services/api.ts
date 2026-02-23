@@ -209,6 +209,23 @@ class ApiService {
     return this.request<User>('/profile')
   }
 
+  async updateProfile(name: string, email: string): Promise<User> {
+    return this.request<User>('/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ name, email }),
+    })
+  }
+
+  async changePassword(
+    current_password: string,
+    new_password: string
+  ): Promise<void> {
+    await this.request<void>('/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify({ current_password, new_password }),
+    })
+  }
+
   async searchUser(query: string): Promise<User[]> {
     return this.request<User[]>(`/users?q=${query}`)
   }

@@ -10,6 +10,7 @@ import './index.css'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { AuthLayout } from './layout/AuthLayout'
 import { lazy, Suspense } from 'react'
+import Profile from './pages/Profile'
 import EditorSkeleton from './components/EditorSkeleton'
 
 const EditDocument = lazy(() => import('./pages/EditDocument'))
@@ -31,6 +32,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Documents />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
                   </ProtectedRoute>
                 }
               />
