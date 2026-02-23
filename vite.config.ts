@@ -54,13 +54,17 @@ export default defineConfig(({ mode }) => {
               }
 
               // Collaboration logic
-              if (
-                id.includes('yjs') ||
-                id.includes('y-websocket') ||
-                id.includes('y-protocols') ||
-                id.includes('y-monaco')
-              ) {
-                return 'collab-engine'
+              if (id.includes('/node_modules/yjs/')) {
+                return 'collab-yjs'
+              }
+              if (id.includes('/node_modules/y-websocket/')) {
+                return 'collab-websocket'
+              }
+              if (id.includes('/node_modules/y-protocols/')) {
+                return 'collab-protocols'
+              }
+              if (id.includes('/node_modules/y-monaco/')) {
+                return 'collab-monaco'
               }
 
               // React core
