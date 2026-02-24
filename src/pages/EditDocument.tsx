@@ -27,7 +27,6 @@ import {
   UserAwareness,
   UserRole,
 } from '../types/types'
-import { MonacoBinding } from 'y-monaco'
 import DOMPurify from 'dompurify'
 import MarkdownIt from 'markdown-it'
 import { full as emoji } from 'markdown-it-emoji'
@@ -84,6 +83,7 @@ const EditDocument: React.FC = () => {
 
   const collaborationRef = useRef<CollaborationProvider | null>(null)
   const editorRef = useRef<any>(null)
+  const MonacoBindingRef = useRef<any>(null)
   const bindingRef = useRef<any | null>(null)
   const decorationIdsRef = useRef<string[]>([])
   const throttledCursorSyncRef = useRef<((editor: any) => void) | null>(null)
@@ -104,6 +104,8 @@ const EditDocument: React.FC = () => {
         ;(window as any).monaco = monacoInstance
 
         setMonacoReady(true)
+        const mon = await import('y-monaco')
+        MonacoBindingRef.current = mon.MonacoBinding
       }
     })
 
@@ -193,7 +195,7 @@ const EditDocument: React.FC = () => {
     const currentModel = editor.getModel()
 
     if (currentModel) {
-      bindingRef.current = new MonacoBinding(
+      bindingRef.current = new MonacoBindingRef.current(
         yText,
         currentModel,
         new Set([editor]),
@@ -241,10 +243,10 @@ const EditDocument: React.FC = () => {
 
           const remoteUsers: Record<number, UserAwareness> = {}
 
-          states.forEach((state: any) => {
+          states.forEach((state: AwarenessState, clientId: number) => {
             // skip self
             if (!state.user || state.user.id === user.id) return
-            remoteUsers[state.user.id] = state.user
+            remoteUsers[clientId] = state.user
 
             if (!state.cursor) return
 
@@ -589,8 +591,8 @@ const CollaboratorAvatars: React.FC<{
       )}
 
       {/* Show Remote Collaborators */}
-      {Object.entries(collaborators).map(([userId, collaborator]) => (
-        <Tooltip key={userId} title={collaborator.name}>
+      {Object.entries(collaborators).map(([clientId, collaborator]) => (
+        <Tooltip key={clientId} title={collaborator.name}>
           <Avatar {...stringAvatar(collaborator.name, collaborator.color)} />
         </Tooltip>
       ))}
