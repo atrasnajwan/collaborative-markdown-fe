@@ -1,15 +1,30 @@
 // it used for binding 'monaco-editor/esm/vs/editor/editor.api.js' to global monaco that load from cdn
-const monaco = (window as any).monaco
-
-if (!monaco) {
-  throw new Error('Monaco must be loaded before importing y-monaco')
+const getMonaco = () => {
+  const monaco = (window as any).monaco
+  if (!monaco) {
+    // Instead of throwing, we return log
+    // allows y-monaco to initialize without crashing the whole script
+    console.warn('y-monaco tried to access Monaco before it was ready.')
+  }
+  return monaco
 }
 
-export const Selection = monaco.Selection
-export const Range = monaco.Range
-export const SelectionDirection = monaco.SelectionDirection
-export const Position = monaco.Position
-export const Uri = monaco.Uri
-export const editor = monaco.editor
+export const Selection = getMonaco()?.Selection
+export const Range = getMonaco()?.Range
+export const SelectionDirection = getMonaco()?.SelectionDirection
+export const Position = getMonaco()?.Position
+export const Uri = getMonaco()?.Uri
 
-export default monaco
+export const editor = new Proxy(
+  {},
+  {
+    get: (_, prop) => getMonaco()?.editor[prop],
+  }
+)
+
+export default new Proxy(
+  {},
+  {
+    get: (_, prop) => getMonaco()?.[prop],
+  }
+)

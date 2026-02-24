@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import '../styles/markdown.css'
 import 'prismjs/themes/prism-tomorrow.css'
@@ -27,7 +27,7 @@ import {
   UserAwareness,
   UserRole,
 } from '../types/types'
-
+import { MonacoBinding } from 'y-monaco'
 import DOMPurify from 'dompurify'
 import MarkdownIt from 'markdown-it'
 import { full as emoji } from 'markdown-it-emoji'
@@ -84,9 +84,7 @@ const EditDocument: React.FC = () => {
 
   const collaborationRef = useRef<CollaborationProvider | null>(null)
   const editorRef = useRef<any>(null)
-  const MonacoBindingRef = useRef<any>(null)
   const bindingRef = useRef<any | null>(null)
-  const modelRef = useRef<any>(null)
   const decorationIdsRef = useRef<string[]>([])
   const throttledCursorSyncRef = useRef<((editor: any) => void) | null>(null)
 
@@ -100,11 +98,12 @@ const EditDocument: React.FC = () => {
       },
     })
 
-    loader.init().then(async () => {
+    loader.init().then(async (monacoInstance) => {
       if (!cancelled) {
+        // FORCE global assignment so the monaco-shim.ts can see it
+        ;(window as any).monaco = monacoInstance
+
         setMonacoReady(true)
-        const mon = await import('y-monaco')
-        MonacoBindingRef.current = mon.MonacoBinding
       }
     })
 
@@ -135,68 +134,79 @@ const EditDocument: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  const handleKicked = (msg: string) => {
-    if (collaborationRef.current) {
-      collaborationRef.current.destroy()
-      collaborationRef.current = null
-    }
-    showNotification(msg, 'error', false)
-    navigate(`/documents`)
-  }
+  const handleKicked = useCallback(
+    (msg: string) => {
+      if (collaborationRef.current) {
+        collaborationRef.current.destroy()
+        collaborationRef.current = null
+      }
+      showNotification(msg, 'error', false)
+      navigate(`/documents`)
+    },
+    [navigate, showNotification]
+  )
 
-  const handleServerMessage = (msg: any) => {
-    switch (msg.type) {
-      case 'permission-changed':
-        setUserRole(msg.role)
-        showNotification(`Your role have been changed to ${msg.role}`)
-        break
+  const handleServerMessage = useCallback(
+    (msg: any) => {
+      switch (msg.type) {
+        case 'permission-changed':
+          setUserRole(msg.role)
+          showNotification(`Your role have been changed to ${msg.role}`)
+          break
 
-      case 'kicked':
-        handleKicked(`You've been removed to access this document! (${title})`)
-        break
+        case 'kicked':
+          handleKicked(
+            `You've been removed to access this document! (${title})`
+          )
+          break
 
-      case 'document-deleted':
-        handleKicked(`Document has been deleted by the owner!`)
-        break
+        case 'document-deleted':
+          handleKicked(`Document has been deleted by the owner!`)
+          break
 
-      case 'auth-error':
-        handleKicked(`Invalid authentication! Try refresh your browser`)
-        break
+        case 'auth-error':
+          handleKicked(`Invalid authentication! Try refresh your browser`)
+          break
 
-      case 'no-access':
-        handleKicked(`You don't have access to this document!`)
-        break
-    }
-  }
+        case 'no-access':
+          handleKicked(`You don't have access to this document!`)
+          break
+      }
+    },
+    [handleKicked, showNotification, title]
+  )
 
-  const bindMonaco = () => {
+  const bindMonaco = useCallback(() => {
     if (!synced) return
+    if (!isEditorReady) return
+    if (!monacoReady) return
     if (!editorRef.current) return
     if (!collaborationRef.current) return
-    if (!MonacoBindingRef.current) return
+
     if (bindingRef.current) {
       bindingRef.current.destroy()
       bindingRef.current = null
     }
 
     const editor = editorRef.current
-    const monaco = (window as any).monaco
     const yText = collaborationRef.current.getText()
+    const currentModel = editor.getModel()
 
-    // only create once
-    if (!modelRef.current) {
-      const model = monaco.editor.createModel('', 'markdown')
-      modelRef.current = model
+    if (currentModel) {
+      bindingRef.current = new MonacoBinding(
+        yText,
+        currentModel,
+        new Set([editor]),
+        collaborationRef.current.getAwareness()
+      )
+    } else {
+      console.error('No editor model found')
     }
-    editor.setModel(modelRef.current)
+  }, [synced, isEditorReady, monacoReady])
 
-    bindingRef.current = new MonacoBindingRef.current(
-      yText,
-      modelRef.current,
-      new Set([editor]),
-      collaborationRef.current.getAwareness()
-    )
-  }
+  useEffect(() => {
+    bindMonaco()
+  }, [bindMonaco])
 
   useEffect(() => {
     if (!id || !user) return
@@ -324,12 +334,6 @@ const EditDocument: React.FC = () => {
     }
   }, [id, user?.id])
 
-  // binding when synced
-  useEffect(() => {
-    if (!synced || !isEditorReady || !monacoReady) return
-    bindMonaco()
-  }, [synced, isEditorReady, monacoReady])
-
   useEffect(() => {
     let lastRun = 0
 
@@ -373,15 +377,6 @@ const EditDocument: React.FC = () => {
 
   const isReadOnly = () =>
     !isEditorReady || !synced || userRole === UserRole.Viewer
-
-  useEffect(() => {
-    return () => {
-      if (modelRef.current) {
-        modelRef.current.dispose()
-        modelRef.current = null
-      }
-    }
-  }, [])
 
   return (
     <Box
