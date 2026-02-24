@@ -103,9 +103,9 @@ const EditDocument: React.FC = () => {
         // FORCE global assignment so the monaco-shim.ts can see it
         ;(window as any).monaco = monacoInstance
 
-        setMonacoReady(true)
         const mon = await import('y-monaco')
         MonacoBindingRef.current = mon.MonacoBinding
+        setMonacoReady(true)
       }
     })
 
@@ -184,6 +184,7 @@ const EditDocument: React.FC = () => {
     if (!monacoReady) return
     if (!editorRef.current) return
     if (!collaborationRef.current) return
+    if (!MonacoBindingRef.current) return
 
     if (bindingRef.current) {
       bindingRef.current.destroy()
