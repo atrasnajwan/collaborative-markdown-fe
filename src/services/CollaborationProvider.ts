@@ -97,6 +97,7 @@ export class CollaborationProvider {
       if (status === 'connected') {
         this.onStatus(true)
         this.onSyncReady(false)
+        this.customMessageListener()
       } else {
         this.onStatus(false)
         this.onSyncReady(false)
@@ -118,10 +119,6 @@ export class CollaborationProvider {
       }
     })
 
-    this.provider.on('message', (event: any) => {
-      this.rawMsgHandler(event, this.onMsg)
-    })
-
     this.provider.on('connection-close', async (event: CloseEvent) => {
       if (event.code === 4001) {
         console.log('Disconnected with status code: ' + event.code)
@@ -137,13 +134,17 @@ export class CollaborationProvider {
     })
   }
 
-  private rawMsgHandler(event: any, callback: (msg: any) => void) {
-    if (typeof event.data !== 'string') return
-    try {
-      callback(JSON.parse(event.data))
-    } catch {
-      // ignore binary Yjs packets
-    }
+  private customMessageListener = () => {
+    this.provider.ws?.addEventListener('message', (event) => {
+      if (typeof event.data !== 'string') return
+
+      try {
+        const msg = JSON.parse(event.data)
+        this.onMsg(msg)
+      } catch {
+        // ignore binary Yjs packets
+      }
+    })
   }
 
   public destroy() {
