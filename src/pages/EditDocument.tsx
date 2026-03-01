@@ -167,7 +167,7 @@ const EditDocument: React.FC = () => {
           break
 
         case 'auth-error':
-          handleKicked(`Invalid authentication! Try refresh your browser`)
+          handleKicked(`Invalid authentication! ${msg.reason}`)
           break
 
         case 'no-access':

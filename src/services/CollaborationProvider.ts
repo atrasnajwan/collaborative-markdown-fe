@@ -12,6 +12,9 @@ import {
 type OnSyncCallback = (state: boolean) => void
 type AwarenessChangeHandler = (states: Map<number, AwarenessState>) => void
 
+const MAX_RECONNECT_ATTEMPTS = 3
+const RECONNECT_DELAY = 2000 // 2 seconds
+
 export class CollaborationProvider {
   private doc: YDoc
   public provider!: WebsocketProvider
@@ -25,6 +28,7 @@ export class CollaborationProvider {
   private textObserver: () => void
   private onAwarenessChange: AwarenessChangeHandler
   private textTimeout: any = null
+  private reconnectAttempts = 0
 
   constructor(
     documentId: string,
@@ -84,10 +88,26 @@ export class CollaborationProvider {
     this.provider.connect()
   }
 
-  private recreateProvider() {
+  private async recreateProvider() {
+    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.error('Maximum reconnection attempts reached.')
+      this.provider.shouldConnect = false
+      return
+    }
+
+    this.reconnectAttempts++
+    console.log(
+      `Reconnection attempt ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`
+    )
+
+    // Cleanup old provider
     this.provider.awareness.destroy()
     this.provider.destroy()
-    this.createProvider()
+
+    // Add a small delay before reconnecting to prevent "rapid fire" requests
+    setTimeout(() => {
+      this.createProvider()
+    }, RECONNECT_DELAY)
   }
 
   private setupListeners() {
